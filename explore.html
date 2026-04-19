@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VerseLink — Explore Poets</title>
+  
+  <style>
+    :root { --accent:#4f9cf7; --accent-light:#82bfff; --primary:#1a4fad; --primary-light:#2d6fd4; --ink:#12100e; }
+    [data-theme="dark"] {
+      --bg:#060a14; --surface:rgba(8,16,36,0.95); --sidebar-bg:rgba(6,12,28,0.98);
+      --text:#f0ebe0; --text-dim:rgba(240,235,224,0.55); --muted:rgba(240,235,224,0.42);
+      --line:rgba(79,156,247,0.18); --input-bg:rgba(240,235,224,0.05);
+      --card-border:rgba(240,235,224,0.09); --input-border:rgba(240,235,224,0.12);
+    }
+    [data-theme="light"] {
+      --bg:#eaf1fd; --surface:rgba(255,252,245,0.96); --sidebar-bg:rgba(235,244,255,0.99);
+      --text:#12100e; --text-dim:rgba(18,16,14,0.62); --muted:rgba(18,16,14,0.48);
+      --line:rgba(79,156,247,0.3); --input-bg:rgba(18,16,14,0.04);
+      --card-border:rgba(18,16,14,0.09); --input-border:rgba(18,16,14,0.14);
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Times New Roman',Times,serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; transition:background 0.4s,color 0.4s; }
+    a { text-decoration:none; color:inherit; }
+    .anim-bg {
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+      background: linear-gradient(125deg, #060a14 0%, #0d1f4a 40%, #122060 70%, #060a14 100%);
+      background-size: 400% 400%;
+      animation: bgShift 18s ease infinite;
+    }
+    [data-theme="light"] .anim-bg {
+      background: linear-gradient(125deg, #eaf1fd 0%, #d0e4fb 40%, #bdd5f8 70%, #eaf1fd 100%);
+      background-size: 400% 400%;
+    }
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .grain { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.025; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:200px; }
+
+    /* SIDEBAR */
+    .shell { display:grid; grid-template-columns:230px 1fr; min-height:100vh; position:relative; z-index:2; }
+    .sidebar { background:var(--sidebar-bg); border-right:1px solid var(--line); padding:22px 14px; display:flex; flex-direction:column; gap:14px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:background 0.4s; }
+    .logo { display:flex; align-items:center; gap:11px; padding:4px 6px; }
+    .logo-mark { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--accent); display:grid; place-items:center; flex-shrink:0; }
+    .logo-mark svg { width:17px; height:17px; stroke:var(--accent); }
+    .logo-name { font-family:'Times New Roman',Times,serif; font-size:1.15rem; font-weight:600; color:var(--text); }
+    .sidebar-divider { height:1px; background:var(--line); }
+    .menu { display:grid; gap:3px; }
+    .menu a { padding:10px 12px; border-radius:11px; font-size:0.875rem; color:var(--muted); display:flex; align-items:center; gap:10px; transition:all 0.22s; border:1px solid transparent; }
+    .menu a .icon { font-size:1rem; line-height:1; flex-shrink:0; }
+    .menu a:hover { background:var(--input-bg); color:var(--text); }
+    .menu a.active { background:rgba(79,156,247,0.1); color:var(--accent); border-color:rgba(79,156,247,0.18); }
+    .sidebar-user { display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:11px; background:var(--input-bg); border:1px solid var(--line); cursor:pointer; transition:all 0.2s; position:relative; }
+    .sidebar-user:hover { border-color:var(--accent); }
+    .s-avatar { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--primary),var(--primary-light)); display:grid; place-items:center; font-weight:700; font-size:0.7rem; color:#fff; flex-shrink:0; }
+    .s-user-name { font-size:0.83rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .s-user-role { font-size:0.7rem; color:var(--muted); }
+    .sidebar-theme { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:11px; background:var(--input-bg); border:1px solid var(--line); }
+    .sidebar-theme span { font-size:0.8rem; color:var(--muted); }
+    .toggle-switch { width:38px; height:20px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; border:none; transition:background 0.3s; flex-shrink:0; }
+    .toggle-switch.on { background:var(--accent); }
+    .toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.3s; }
+    .toggle-switch.on::after { transform:translateX(18px); }
+    .sidebar-bottom { margin-top:auto; display:flex; flex-direction:column; gap:10px; }
+    .user-dropdown-sb { position:absolute; bottom:calc(100% + 8px); left:0; right:0; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:8px; box-shadow:0 -16px 40px rgba(0,0,0,0.3); z-index:50; opacity:0; transform:translateY(8px) scale(0.96); pointer-events:none; transition:all 0.22s cubic-bezier(0.22,1,0.36,1); backdrop-filter:blur(20px); }
+    .user-dropdown-sb.open { opacity:1; transform:translateY(0) scale(1); pointer-events:all; }
+    .dd-item { padding:8px 10px; border-radius:9px; font-size:0.83rem; color:var(--text-dim); cursor:pointer; transition:all 0.2s; display:block; }
+    .dd-item:hover { background:rgba(79,156,247,0.1); color:var(--accent); }
+    .dd-logout { color:#e05c5c; }
+    .dd-logout:hover { background:rgba(224,92,92,0.1); color:#e05c5c; }
+
+    /* MAIN */
+    .main { padding:32px 28px 80px; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .eyebrow { font-size:0.68rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:10px; }
+
+    /* HERO */
+    .hero-section { display:grid; grid-template-columns:1.15fr 0.85fr; gap:18px; margin-bottom:40px; animation:fadeUp 0.5s ease both; }
+    .hero-card { background:var(--surface); border:1px solid var(--card-border); border-radius:24px; padding:32px; backdrop-filter:blur(14px); }
+    .spotlight { background:var(--surface); border:1px solid rgba(22,93,99,0.3); border-radius:24px; padding:32px; backdrop-filter:blur(14px); }
+    .hero-card h1 { font-family:'Times New Roman',Times,serif; font-size:clamp(1.9rem,3vw,3rem); line-height:1.05; font-weight:400; margin-bottom:14px; color:var(--text); }
+    .hero-card p { color:var(--text-dim); line-height:1.7; margin-bottom:24px; font-size:0.9rem; }
+    .search-bar { display:flex; gap:8px; flex-wrap:wrap; }
+    .search-bar input, .search-bar select { padding:12px 14px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:12px; color:var(--text); font-family:'Times New Roman',Times,serif; font-size:0.88rem; transition:border-color 0.3s; flex:1; min-width:120px; outline:none; }
+    .search-bar input::placeholder { color:var(--muted); }
+    .search-bar input:focus, .search-bar select:focus { border-color:var(--accent); }
+    .search-bar select option { background:var(--bg); color:var(--text); }
+    .btn-search { padding:12px 20px; background:var(--accent); border:none; border-radius:12px; color:var(--ink); font-family:'Times New Roman',Times,serif; font-weight:500; cursor:pointer; transition:all 0.3s; font-size:0.88rem; }
+    .btn-search:hover { background:var(--accent-light); transform:translateY(-1px); }
+
+    .spotlight h2 { font-family:'Times New Roman',Times,serif; font-size:1.5rem; font-weight:400; margin:8px 0 20px; color:var(--text); }
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+    .stat { padding:16px 12px; border-radius:14px; background:var(--input-bg); border:1px solid var(--card-border); text-align:center; transition:all 0.3s; }
+    .stat:hover { background:rgba(79,156,247,0.1); border-color:var(--accent); }
+    .stat strong { display:block; font-size:1.6rem; font-family:'Times New Roman',Times,serif; color:var(--accent-light); font-weight:400; }
+    .stat span { font-size:0.76rem; color:var(--muted); }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+    .pulse-dot { width:7px; height:7px; border-radius:50%; background:#4ade80; display:inline-block; margin-right:6px; animation:pulse 2s infinite; }
+    .live-badge { display:flex; align-items:center; color:#4ade80; font-size:0.8rem; margin-bottom:10px; }
+    .trending-stat { padding:14px; border-radius:14px; background:var(--input-bg); border:1px solid var(--card-border); font-size:0.82rem; color:var(--muted); }
+
+    /* CARDS */
+    .section-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; animation:fadeUp 0.5s ease both 0.1s; }
+    .section-head h2 { font-family:'Times New Roman',Times,serif; font-size:1.9rem; font-weight:400; color:var(--text); }
+    .section-head .sort { color:var(--accent); font-size:0.83rem; cursor:pointer; }
+    .filter-row { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:20px; animation:fadeUp 0.5s ease both 0.12s; }
+    .filter-pill { padding:7px 15px; border-radius:999px; font-size:0.81rem; cursor:pointer; border:1px solid var(--card-border); background:transparent; color:var(--muted); transition:all 0.22s; font-family:'Times New Roman',Times,serif; }
+    .filter-pill:hover, .filter-pill.active { background:rgba(79,156,247,0.13); border-color:var(--accent); color:var(--accent); }
+
+    .cards-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .card { background:var(--surface); border:1px solid var(--card-border); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:14px; backdrop-filter:blur(12px); transition:all 0.28s; animation:fadeUp 0.5s ease both; }
+    .card:hover { transform:translateY(-4px); border-color:var(--accent); box-shadow:0 16px 44px rgba(0,0,0,0.22); }
+    .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+    .person { display:flex; gap:11px; align-items:center; }
+    .avatar { width:46px; height:46px; border-radius:13px; display:grid; place-items:center; font-weight:700; font-size:0.9rem; flex-shrink:0; color:#fff; }
+    .avatar-indigo { background:linear-gradient(135deg,#1a4fad,#2d6fd4); }
+    .avatar-rose { background:linear-gradient(135deg,#0f2f7a,#4f9cf7); }
+    .avatar-rose { background:linear-gradient(135deg,#7c2d5e,#c4556a); }
+    .avatar-sage { background:linear-gradient(135deg,#2d5e3c,#4a8c5c); }
+    .avatar-slate { background:linear-gradient(135deg,#3c4a5e,#5a6a8c); }
+    .avatar-amber { background:linear-gradient(135deg,#5e3c2d,#8c5a4a); }
+    .person-info .name { font-weight:500; font-size:0.92rem; color:var(--text); }
+    .person-info .meta { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+    .badge { padding:4px 10px; border-radius:999px; font-size:0.73rem; border:1px solid rgba(79,156,247,0.32); color:var(--accent); white-space:nowrap; }
+    .card-desc { color:var(--text-dim); font-size:0.86rem; line-height:1.6; }
+    .tag-row { display:flex; flex-wrap:wrap; gap:5px; }
+    .tag { padding:4px 10px; background:var(--input-bg); border:1px solid var(--card-border); border-radius:999px; font-size:0.75rem; color:var(--muted); }
+    .card-actions { display:flex; gap:8px; margin-top:auto; }
+    .btn-connect { flex:1; padding:10px; border:none; border-radius:11px; background:var(--primary); color:#fff; font-family:'Times New Roman',Times,serif; font-size:0.83rem; font-weight:500; cursor:pointer; transition:all 0.28s; }
+    .btn-connect:hover { background:var(--primary-light); }
+    .btn-connect.connected { background:rgba(74,222,128,0.14); color:#4ade80; border:1px solid rgba(74,222,128,0.28); }
+    .btn-outline { padding:10px 13px; border:1px solid var(--card-border); border-radius:11px; background:transparent; color:var(--muted); font-family:'Times New Roman',Times,serif; font-size:0.83rem; cursor:pointer; transition:all 0.28s; }
+    .btn-outline:hover { border-color:var(--text); color:var(--text); }
+
+    .pagination { display:flex; justify-content:center; gap:7px; margin-top:32px; }
+    .page-btn { width:38px; height:38px; border-radius:10px; border:1px solid var(--card-border); background:transparent; color:var(--muted); cursor:pointer; transition:all 0.28s; font-family:'Times New Roman',Times,serif; }
+    .page-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .page-btn.active { background:var(--accent); border-color:var(--accent); color:var(--ink); font-weight:600; }
+    .page-btn.next { width:auto; padding:0 14px; }
+
+    .toast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--surface); border:1px solid var(--accent); color:var(--text); padding:12px 20px; border-radius:13px; font-size:0.88rem; z-index:999; transition:transform 0.4s cubic-bezier(0.22,1,0.36,1); backdrop-filter:blur(12px); white-space:nowrap; }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+
+    @media (max-width:1050px) { .cards-grid{grid-template-columns:repeat(2,1fr)} .hero-section{grid-template-columns:1fr} }
+    @media (max-width:860px) { .shell{display:block} .cards-grid{grid-template-columns:1fr} .main{padding:20px 16px 60px} .stats-grid{grid-template-columns:repeat(2,1fr)} }
+
+    /* ── RECENTLY PUBLISHED POEMS ── */
+    .published-section { margin-bottom: 32px; }
+    .published-section .section-head { margin-bottom: 16px; }
+    .published-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .pub-card {
+      background: var(--surface); border: 1px solid var(--card-border);
+      border-radius: 18px; padding: 20px; transition: all 0.28s;
+      animation: fadeUp 0.4s ease both;
+    }
+    .pub-card:hover { border-color: rgba(79,156,247,0.35); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.16); }
+    .pub-card-author { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .pub-avatar { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); display: grid; place-items: center; font-weight: 700; font-size: 0.75rem; color: #fff; flex-shrink: 0; }
+    .pub-author-name { font-size: 0.83rem; font-weight: 500; color: var(--text); }
+    .pub-author-time { font-size: 0.72rem; color: var(--muted); }
+    .pub-title { font-size: 1.15rem; font-weight: 400; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
+    .pub-genre { font-size: 0.76rem; color: var(--accent); margin-bottom: 10px; }
+    .pub-excerpt { font-style: italic; font-size: 0.88rem; line-height: 1.75; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px; }
+    .pub-card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .pub-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .pub-tag { padding: 3px 9px; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 999px; font-size: 0.7rem; color: var(--muted); }
+    .btn-review-pub { padding: 5px 13px; border: 1px solid rgba(79,156,247,0.3); border-radius: 999px; background: transparent; color: var(--accent); font-size: 0.75rem; cursor: pointer; transition: all 0.22s; white-space: nowrap; }
+    .btn-review-pub:hover { background: rgba(79,156,247,0.12); }
+    .no-published { padding: 28px; text-align: center; color: var(--muted); font-size: 0.9rem; font-style: italic; border: 1px dashed var(--card-border); border-radius: 16px; }
+    .no-published a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="anim-bg"></div>
+  <div class="grain"></div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="logo" href="feed.html">
+        <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18c6-1 9-6 9-12 2 5 3 8 5 10-2 2-5 3-9 3H5Z"/><path d="M8 14c1.5-1.2 2.6-2.8 3.3-4.8"/></svg></div>
+        <span class="logo-name">VerseLink</span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <nav class="menu">
+        <a href="feed.html"><span class="icon">📜</span>Feed</a>
+        <a class="active" href="explore.html"><span class="icon">🔍</span>Explore</a>
+        <a href="review.html"><span class="icon">✍️</span>Reviews</a>
+        <a href="post-content.html"><span class="icon">📝</span>Post content</a>
+      </nav>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-theme">
+          <span id="themeLabel">Dark mode</span>
+          <button class="toggle-switch on" id="themeToggle" onclick="toggleTheme()"></button>
+        </div>
+        <div class="sidebar-user" id="sidebarUser" onclick="toggleUserMenu()">
+          <div class="s-avatar" id="sidebarAvatar">?</div>
+          <div style="flex:1;min-width:0">
+            <div class="s-user-name" id="sidebarName">Loading…</div>
+            <div class="s-user-role">My account</div>
+          </div>
+          <div class="user-dropdown-sb" id="userDropdown">
+            <a class="dd-item" href="feed.html">📜 My feed</a>
+            <a class="dd-item" href="post-content.html">✦ Write poem</a>
+            <div class="dd-item dd-logout" onclick="doLogout()">↩ Sign out</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="hero-section">
+        <div class="hero-card">
+          <span class="eyebrow">Discover people online</span>
+          <h1>Find poets, readers &amp;<br>reviewers who match<br>your voice.</h1>
+          <p>Search the network by genre, language, mood, or availability. Connect with people who write the way you read.</p>
+          <div class="search-bar">
+            <input type="text" placeholder="Search by poet, theme, city, or keyword…" id="searchInput" oninput="filterCards()"/>
+            <select id="genreFilter" onchange="filterCards()">
+              <option value="">All genres</option><option>Free verse</option><option>Romantic</option>
+              <option>Spoken word</option><option>Haiku</option><option>Ghazal</option>
+            </select>
+            <button class="btn-search" onclick="filterCards()">Search</button>
+          </div>
+        </div>
+        <aside class="spotlight">
+          <span class="eyebrow">Network pulse</span>
+          <div class="live-badge"><span class="pulse-dot"></span> Live right now</div>
+          <h2>Today's creative<br>momentum</h2>
+          <div class="stats-grid">
+            <div class="stat" id="stat1"><strong>248</strong><span>Poets online</span></div>
+            <div class="stat" id="stat2"><strong>96</strong><span>Open to collab</span></div>
+            <div class="stat" id="stat3"><strong>54</strong><span>New reviews</span></div>
+          </div>
+          <div class="trending-stat">🔥 <strong style="color:var(--text);font-size:0.88rem">Trending:</strong> <span>"Marina Wind" by Ananya · 127 reads</span></div>
+        </aside>
+      </section>
+
+      <!-- RECENTLY PUBLISHED POEMS -->
+      <section class="published-section">
+        <div class="section-head">
+          <div><span class="eyebrow">Just published</span><h2>Fresh from the community</h2></div>
+        </div>
+        <div class="published-grid" id="publishedGrid">
+          <!-- Filled by JS from localStorage -->
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div><span class="eyebrow">Featured profiles</span><h2>People you can connect with</h2></div>
+          <span class="sort">Sort: Most active ▾</span>
+        </div>
+        <div class="filter-row">
+          <button class="filter-pill active" onclick="setFilter(this,'all')">All poets</button>
+          <button class="filter-pill" onclick="setFilter(this,'review')">Open to review</button>
+          <button class="filter-pill" onclick="setFilter(this,'collab')">Collaborators</button>
+          <button class="filter-pill" onclick="setFilter(this,'mentor')">Mentors</button>
+          <button class="filter-pill" onclick="setFilter(this,'rising')">Rising voices</button>
+        </div>
+
+        <div class="cards-grid">
+          <article class="card" data-type="review" data-name="Ananya Krish" data-tags="tamil english urban">
+            <div class="card-top">
+              <div class="person"><div class="avatar avatar-indigo">AN</div><div class="person-info"><div class="name">Ananya Krish</div><div class="meta">Chennai · Free verse · Online now</div></div></div>
+              <span class="badge">Open to review</span>
+            </div>
+            <p class="card-desc">Writes intimate city poems and curates bilingual open-mic circles. Known for capturing the texture of coastal urban life.</p>
+            <div class="tag-row"><span class="tag">Tamil</span><span class="tag">English</span><span class="tag">Urban memory</span></div>
+            <div class="card-actions">
+              <button class="btn-connect" onclick="toggleConnect(this)">Connect</button>
+              <button class="btn-outline" onclick="location.href='feed.html'">View work</button>
+            </div>
+          </article>
+
+          <article class="card" data-type="collab" data-name="Ritvik Varma" data-tags="performance workshops">
+            <div class="card-top">
+              <div class="person"><div class="avatar avatar-rose">RV</div><div class="person-info"><div class="name">Ritvik Varma</div><div class="meta">Bengaluru · Spoken word · Online</div></div></div>
+              <span class="badge">Collaborator</span>
+            </div>
+            <p class="card-desc">Performs stage poetry focused on identity, masculinity, and digital life. Reviews with precision and speed.</p>
+            <div class="tag-row"><span class="tag">Performance</span><span class="tag">Reviews fast</span><span class="tag">Workshops</span></div>
+            <div class="card-actions">
+              <button class="btn-connect" onclick="toggleConnect(this)">Connect</button>
+              <button class="btn-outline" onclick="showToast('Message sent!')">Message</button>
+            </div>
+          </article>
+
+          <article class="card" data-type="mentor" data-name="Sara Mir" data-tags="lyric urdu critique">
+            <div class="card-top">
+              <div class="person"><div class="avatar avatar-rose">SM</div><div class="person-info"><div class="name">Sara Mir</div><div class="meta">Hyderabad · Ghazal · Online now</div></div></div>
+              <span class="badge">Mentor</span>
+            </div>
+            <p class="card-desc">Explores longing and restraint through Urdu-inspired short-form lyric pieces. Runs weekly critique circles.</p>
+            <div class="tag-row"><span class="tag">Lyric</span><span class="tag">Critique circles</span><span class="tag">Urdu</span></div>
+            <div class="card-actions">
+              <button class="btn-connect" onclick="toggleConnect(this)">Connect</button>
+              <button class="btn-outline" onclick="location.href='review.html?poem=1'">Review work</button>
+            </div>
+          </article>
+
+          <article class="card" data-type="review" data-name="Dev Kannan" data-tags="minimal nature haiku">
+            <div class="card-top">
+              <div class="person"><div class="avatar avatar-sage">DK</div><div class="person-info"><div class="name">Dev Kannan</div><div class="meta">Coimbatore · Haiku · Available</div></div></div>
+              <span class="badge">Reviewer</span>
+            </div>
+            <p class="card-desc">Minimalist imagery, nature notes, and calm critique for emerging poets. Weekend jam sessions open to all.</p>
+            <div class="tag-row"><span class="tag">Minimal</span><span class="tag">Nature</span><span class="tag">Weekend jams</span></div>
+            <div class="card-actions">
+              <button class="btn-connect" onclick="toggleConnect(this)">Connect</button>
+              <button class="btn-outline" onclick="showToast('Invite sent!')">Invite</button>
+            </div>
+          </article>
+
+          <article class="card" data-type="collab" data-name="Leela Thomas" data-tags="narrative archive migration">
+            <div class="card-top">
+              <div class="person"><div class="avatar avatar-slate">LT</div><div class="person-info"><div class="name">Leela Thomas</div><div class="meta">Kochi · Narrative poetry · Online</div></div></div>
+              <span class="badge">Open to collab</span>
+            </div>
+            <p class="card-desc">Builds long-form poems around family archives, landscapes, and migration. Editor's pick for three consecutive months.</p>
+            <div class="tag-row"><span class="tag">Narrative</span><span class="tag">Archive</span><span class="tag">Editor's pick</span></div>
+            <div class="card-actions">
+              <button class="btn-connect" onclick="toggleConnect(this)">Connect</button>
+              <button class="btn-outline" onclick="showToast('Following Leela!')">Follow</button>
+            </div>
+          </article>
+
+          <article class="card" data-type="rising" data-name="Nila Joseph" data-tags="romance visual community">
+            <div class="card-top">
+              <div class="person"><div class="avatar avatar-amber">NJ</div><div class="person-info"><div class="name">Nila Joseph</div><div class="meta">Madurai · Love poetry · Online now</div></div></div>
+              <span class="badge">Rising voice</span>
+            </div>
+            <p class="card-desc">Known for visual metaphor, soft cadence, and reader-first emotional writing. Community host and open-mic organiser.</p>
+            <div class="tag-row"><span class="tag">Romance</span><span class="tag">Visual imagery</span><span class="tag">Community host</span></div>
+            <div class="card-actions">
+              <button class="btn-connect" onclick="toggleConnect(this)">Connect</button>
+              <button class="btn-outline" onclick="showToast('Opening profile…')">Profile</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="pagination">
+          <button class="page-btn active">1</button>
+          <button class="page-btn" onclick="showToast('Page 2 loading…')">2</button>
+          <button class="page-btn" onclick="showToast('Page 3 loading…')">3</button>
+          <button class="page-btn next" onclick="showToast('Next page loading…')">Next →</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const getTheme = () => localStorage.getItem('vl_theme') || 'dark';
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('vl_theme', t);
+      const tog = document.getElementById('themeToggle');
+      const lbl = document.getElementById('themeLabel');
+      if (t === 'dark') { tog.classList.add('on'); lbl.textContent = 'Dark mode'; }
+      else { tog.classList.remove('on'); lbl.textContent = 'Light mode'; }
+    }
+    function toggleTheme() { applyTheme(getTheme() === 'dark' ? 'light' : 'dark'); }
+    applyTheme(getTheme());
+
+    const user = (() => { try { return JSON.parse(sessionStorage.getItem('vl_user')); } catch { return null; } })();
+    if (!user) location.href = 'login.html';
+    else { document.getElementById('sidebarAvatar').textContent = user.initials || '?'; document.getElementById('sidebarName').textContent = user.name || '—'; }
+    function doLogout() { sessionStorage.removeItem('vl_user'); location.href = 'login.html'; }
+    function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('open'); }
+    document.addEventListener('click', e => { if (!e.target.closest('.sidebar-user')) document.getElementById('userDropdown').classList.remove('open'); });
+
+    function animateCount(el, target) { let n=0; const step=target/60; const t=setInterval(()=>{ n=Math.min(n+step,target); el.querySelector('strong').textContent=Math.round(n); if(n>=target)clearInterval(t); },16); }
+    const io = new IntersectionObserver(entries => { if(entries[0].isIntersecting){ animateCount(document.getElementById('stat1'),248); animateCount(document.getElementById('stat2'),96); animateCount(document.getElementById('stat3'),54); io.disconnect(); } });
+    io.observe(document.getElementById('stat1'));
+    setInterval(()=>{ const el=document.getElementById('stat1'); const n=parseInt(el.querySelector('strong').textContent); el.querySelector('strong').textContent=Math.max(240,n+Math.floor(Math.random()*3-1)); },4000);
+
+    let activeFilter = 'all';
+    function setFilter(btn, type) {
+      activeFilter = type;
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      filterCards();
+    }
+    function filterCards() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      document.querySelectorAll('.card').forEach(c => {
+        const matchType = activeFilter === 'all' || c.dataset.type === activeFilter;
+        const matchQ = !q || c.dataset.name.toLowerCase().includes(q) || c.dataset.tags.toLowerCase().includes(q);
+        c.style.display = (matchType && matchQ) ? 'flex' : 'none';
+        if (matchType && matchQ) c.style.animation = 'fadeUp 0.35s ease both';
+      });
+    }
+    function toggleConnect(btn) {
+      btn.classList.toggle('connected');
+      btn.textContent = btn.classList.contains('connected') ? '✓ Connected' : 'Connect';
+      if (btn.classList.contains('connected')) showToast('Connection request sent!');
+    }
+    document.querySelectorAll('.card').forEach((c, i) => c.style.animationDelay = `${i * 0.07}s`);
+    function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+    // ── Published Poems from post-content.html ─────────────────
+    function renderPublishedPoems() {
+      const grid = document.getElementById('publishedGrid');
+      const poems = JSON.parse(localStorage.getItem('vl_published_poems') || '[]');
+      if (!poems.length) {
+        grid.innerHTML = '<div class="no-published">No poems published yet. <a href="post-content.html">Write the first one ✦</a></div>';
+        return;
+      }
+      grid.innerHTML = poems.map((p, i) => {
+        const elapsed = (() => {
+          const diff = Date.now() - new Date(p.publishedAt).getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 1) return 'Just now';
+          if (mins < 60) return `${mins}m ago`;
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return `${hrs}h ago`;
+          return `${Math.floor(hrs/24)}d ago`;
+        })();
+        const excerpt = p.body.split('\n').filter(Boolean).slice(0, 3).join('\n');
+        const genreTag = p.genre ? `<span class="pub-tag">${p.genre}</span>` : '';
+        const moodTag  = p.mood  ? `<span class="pub-tag">${p.mood}</span>`  : '';
+        return `<div class="pub-card" style="animation-delay:${i*0.07}s">
+          <div class="pub-card-author">
+            <div class="pub-avatar">${p.initials}</div>
+            <div><div class="pub-author-name">${p.author}</div><div class="pub-author-time">${elapsed}</div></div>
+          </div>
+          <div class="pub-title">${p.title}</div>
+          <div class="pub-genre">${p.genre || 'Poetry'} · ${p.language || 'English'}</div>
+          <div class="pub-excerpt">${excerpt}</div>
+          <div class="pub-card-footer">
+            <div class="pub-tags">${genreTag}${moodTag}</div>
+            <button class="btn-review-pub" onclick="location.href='review.html'">✍ Review</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    renderPublishedPoems();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VerseLink — Poem Editor</title>
+  
+  <style>
+    :root { --accent:#4f9cf7; --accent-light:#82bfff; --primary:#1a4fad; --primary-light:#2d6fd4; --ink:#12100e; --success:#4ade80; }
+    [data-theme="dark"] {
+      --bg:#060a14; --surface:rgba(28,24,20,0.92); --surface-2:rgba(20,17,13,0.96);
+      --text:#f0ebe0; --text-dim:rgba(240,235,224,0.55); --muted:rgba(240,235,224,0.45);
+      --line:rgba(79,156,247,0.2); --input-bg:rgba(240,235,224,0.05); --input-border:rgba(240,235,224,0.12);
+      --sidebar-bg:rgba(20,17,13,0.96);
+    }
+    [data-theme="light"] {
+      --bg:#eaf1fd; --surface:rgba(240,247,255,0.93); --surface-2:rgba(245,240,228,0.98);
+      --text:#12100e; --text-dim:rgba(18,16,14,0.62); --muted:rgba(18,16,14,0.5);
+      --line:rgba(79,156,247,0.35); --input-bg:rgba(18,16,14,0.04); --input-border:rgba(18,16,14,0.18);
+      --sidebar-bg:rgba(245,240,228,0.98);
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Times New Roman',Times,serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; transition:background 0.4s,color 0.4s; }
+    a { text-decoration:none; color:inherit; }
+
+    .anim-bg {
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+      background: linear-gradient(125deg, #060a14 0%, #0d1f4a 40%, #122060 70%, #060a14 100%);
+      background-size: 400% 400%;
+      animation: bgShift 18s ease infinite;
+    }
+    [data-theme="light"] .anim-bg {
+      background: linear-gradient(125deg, #eaf1fd 0%, #d0e4fb 40%, #bdd5f8 70%, #eaf1fd 100%);
+      background-size: 400% 400%;
+    }
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .grain { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.03; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:200px; }
+
+    .shell { display:grid; grid-template-columns:220px 1fr; min-height:100vh; position:relative; z-index:2; }
+
+    /* SIDEBAR */
+    .sidebar { background:var(--sidebar-bg); border-right:1px solid var(--line); padding:24px 16px; display:flex; flex-direction:column; gap:16px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:background 0.4s; }
+    .logo { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+    .logo-mark { width:38px; height:38px; border-radius:10px; border:1.5px solid var(--accent); display:grid; place-items:center; flex-shrink:0; }
+    .logo-mark svg { width:18px; height:18px; stroke:var(--accent); }
+    .logo-name { font-family:'Times New Roman',Times,serif; font-size:1.15rem; font-weight:600; color:var(--text); }
+
+    .menu { display:grid; gap:4px; }
+    .menu a { padding:11px 14px; border-radius:12px; font-size:0.88rem; color:var(--muted); display:flex; align-items:center; gap:10px; transition:all 0.25s; }
+    .menu a .icon { font-size:1.05rem; }
+    .menu a:hover { background:var(--input-bg); color:var(--text); }
+    .menu a.active { background:rgba(79,156,247,0.1); color:var(--accent); border:1px solid rgba(79,156,247,0.2); }
+
+    /* User block in sidebar */
+    .sidebar-user { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; background:var(--input-bg); border:1px solid var(--line); cursor:pointer; transition:all 0.2s; }
+    .sidebar-user:hover { border-color:var(--accent); }
+    .s-avatar { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--primary),var(--primary-light)); display:grid; place-items:center; font-weight:700; font-size:0.72rem; color:#fff; flex-shrink:0; }
+    .s-user-name { font-size:0.84rem; font-weight:500; color:var(--text); }
+    .s-user-role { font-size:0.72rem; color:var(--muted); }
+
+    /* Theme toggle in sidebar */
+    .sidebar-theme { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:12px; background:var(--input-bg); border:1px solid var(--line); }
+    .sidebar-theme span { font-size:0.82rem; color:var(--muted); }
+    .toggle-switch { width:40px; height:22px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; border:none; transition:background 0.3s; }
+    .toggle-switch.on { background:var(--accent); }
+    .toggle-switch::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.3s; }
+    .toggle-switch.on::after { transform:translateX(18px); }
+
+    .draft-status { padding:10px 14px; border-radius:12px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2); display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--success); }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.3)} }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--success); animation:pulse 2s infinite; flex-shrink:0; }
+
+    .sidebar-info { margin-top:auto; }
+    .sidebar-label { font-size:0.66rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; display:block; }
+    .sidebar-desc { color:var(--muted); font-size:0.8rem; line-height:1.65; }
+
+    .version-row { display:flex; gap:8px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); }
+    .version-row:last-child { border:none; }
+    .version-dot { width:8px; height:8px; border-radius:50%; background:rgba(79,156,247,0.3); flex-shrink:0; }
+    .version-dot.current { background:var(--accent); }
+    .version-info { flex:1; }
+    .version-label { font-size:0.82rem; color:var(--text-dim); }
+    .version-time { font-size:0.72rem; color:var(--muted); }
+    .version-restore { font-size:0.76rem; color:var(--accent); cursor:pointer; opacity:0; transition:opacity 0.2s; }
+    .version-row:hover .version-restore { opacity:1; }
+
+    /* MAIN */
+    .main { padding:28px 28px; display:flex; flex-direction:column; gap:22px; overflow-y:auto; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .top-bar { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; animation:fadeUp 0.5s ease both; }
+    .eyebrow { font-size:0.68rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:10px; }
+    .top-bar h1 { font-family:'Times New Roman',Times,serif; font-size:clamp(1.8rem,3vw,3rem); font-weight:400; line-height:1.1; color:var(--text); max-width:35ch; }
+    .top-bar p { color:var(--muted); font-size:0.88rem; max-width:45ch; margin-top:8px; }
+    .btn-row { display:flex; gap:10px; flex-shrink:0; flex-wrap:wrap; }
+    .btn { padding:11px 18px; border-radius:12px; font-family:'Times New Roman',Times,serif; font-size:0.88rem; font-weight:500; cursor:pointer; transition:all 0.3s; border:none; }
+    .btn-draft { background:var(--input-bg); color:var(--text-dim); border:1px solid var(--input-border); }
+    .btn-draft:hover { background:rgba(240,235,224,0.12); color:var(--text); }
+    .btn-preview { background:rgba(79,156,247,0.12); color:var(--accent); border:1px solid rgba(79,156,247,0.3); }
+    .btn-preview:hover { background:rgba(79,156,247,0.22); }
+    .btn-publish { background:linear-gradient(135deg,var(--primary),var(--primary-light)); color:#fff; }
+    .btn-publish:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(22,93,99,0.4); }
+
+    .editor-layout { display:grid; grid-template-columns:1.1fr 0.9fr; gap:20px; animation:fadeUp 0.6s ease both 0.1s; }
+    .panel { background:var(--surface); border:1px solid var(--input-border); border-radius:24px; padding:28px; backdrop-filter:blur(12px); transition:background 0.4s; }
+
+    .form-grid { display:grid; gap:18px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    .field label { display:block; font-size:0.78rem; letter-spacing:0.06em; color:var(--muted); margin-bottom:8px; text-transform:uppercase; }
+    .field input, .field select, .field textarea { width:100%; padding:13px 15px; background:var(--input-bg); border:1.5px solid var(--input-border); border-radius:13px; color:var(--text); font-family:'Times New Roman',Times,serif; font-size:0.92rem; transition:all 0.3s; outline:none; }
+    .field input::placeholder, .field textarea::placeholder { color:var(--muted); opacity:0.6; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--accent); background:rgba(79,156,247,0.04); }
+    .field input.error, .field textarea.error { border-color:#e05c5c; }
+    .field select option { background:var(--bg); color:var(--text); }
+    .field textarea { min-height:280px; resize:vertical; line-height:1.9; font-family:'Times New Roman',Times,serif; font-size:1.05rem; font-style:italic; }
+
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .tool-btn { padding:8px 14px; border:1px solid var(--input-border); border-radius:10px; background:var(--input-bg); color:var(--muted); font-size:0.8rem; cursor:pointer; transition:all 0.25s; }
+    .tool-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .tool-btn.active { background:rgba(79,156,247,0.12); border-color:rgba(79,156,247,0.4); color:var(--accent); }
+
+    .meta-pills { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+    .pill { padding:7px 14px; border-radius:999px; font-size:0.8rem; background:var(--input-bg); border:1px solid var(--input-border); color:var(--muted); }
+    .pill.gold { border-color:rgba(79,156,247,0.3); color:var(--accent); }
+
+    .preview-panel { display:flex; flex-direction:column; }
+    .preview-header { padding:0 0 20px; border-bottom:1px solid var(--input-border); margin-bottom:24px; }
+    .preview-title { font-family:'Times New Roman',Times,serif; font-size:1.9rem; font-weight:400; line-height:1.15; margin-bottom:8px; color:var(--text); }
+    .preview-meta { color:var(--muted); font-size:0.85rem; }
+    .preview-poem { font-family:'Times New Roman',Times,serif; font-size:1.08rem; line-height:2.0; font-style:italic; color:var(--text-dim); white-space:pre-wrap; flex:1; min-height:200px; }
+    .mini-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:28px; }
+    .mini { padding:16px; border-radius:14px; background:var(--input-bg); border:1px solid var(--input-border); }
+    .mini strong { display:block; font-size:0.82rem; color:var(--accent); margin-bottom:5px; }
+    .mini p { font-size:0.8rem; color:var(--muted); line-height:1.5; }
+
+    .toast { position:fixed; bottom:28px; right:28px; z-index:100; background:var(--surface); backdrop-filter:blur(12px); border:1px solid rgba(30,140,150,0.4); color:var(--text); padding:14px 22px; border-radius:14px; font-size:0.88rem; transform:translateY(80px); opacity:0; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); max-width:320px; }
+    .toast.show { transform:translateY(0); opacity:1; }
+
+    @media (max-width:1100px) { .editor-layout{grid-template-columns:1fr} }
+    @media (max-width:900px) { .shell{grid-template-columns:1fr} .sidebar{display:none} .form-row,.form-row-3{grid-template-columns:1fr} .main{padding:20px 16px} .top-bar{flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="anim-bg"></div>
+  <div class="grain"></div>
+
+  <div class="shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <a class="logo" href="feed.html">
+        <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18c6-1 9-6 9-12 2 5 3 8 5 10-2 2-5 3-9 3H5Z"/><path d="M8 14c1.5-1.2 2.6-2.8 3.3-4.8"/></svg></div>
+        <span class="logo-name">VerseLink</span>
+      </a>
+
+      <!-- USER BLOCK -->
+      <div class="sidebar-user" id="sidebarUser" onclick="doLogout()" title="Click to sign out">
+        <div class="s-avatar" id="sidebarAvatar">?</div>
+        <div>
+          <div class="s-user-name" id="sidebarName">Loading…</div>
+          <div class="s-user-role">Click to sign out</div>
+        </div>
+      </div>
+
+      <!-- THEME TOGGLE -->
+      <div class="sidebar-theme">
+        <span id="themeLabel">Dark mode</span>
+        <button class="toggle-switch on" id="themeToggle" onclick="toggleTheme()"></button>
+      </div>
+
+      <nav class="menu">
+        <a href="feed.html"><span class="icon">📜</span>Feed</a>
+        <a href="explore.html"><span class="icon">🔍</span>Explore</a>
+        <a href="review.html"><span class="icon">✍️</span>Reviews</a>
+        <a class="active" href="post-content.html"><span class="icon">📝</span>Post content</a>
+      </nav>
+
+      <div class="draft-status" id="draftStatus">
+        <div class="dot"></div>
+        <span id="draftMsg">Draft auto-saved</span>
+      </div>
+
+      <div>
+        <span class="sidebar-label">Version history</span>
+        <div class="version-row"><div class="version-dot current"></div><div class="version-info"><div class="version-label">Current draft</div><div class="version-time">Just now</div></div><span class="version-restore">Restore</span></div>
+        <div class="version-row"><div class="version-dot"></div><div class="version-info"><div class="version-label">Version 7</div><div class="version-time">2 min ago</div></div><span class="version-restore">Restore</span></div>
+        <div class="version-row"><div class="version-dot"></div><div class="version-info"><div class="version-label">Version 6</div><div class="version-time">14 min ago</div></div><span class="version-restore">Restore</span></div>
+      </div>
+
+      <div class="sidebar-info">
+        <span class="sidebar-label">Workflow</span>
+        <p class="sidebar-desc">Write freely, save drafts, request reviews, and publish when your poem feels finished.</p>
+      </div>
+    </aside>
+
+    <!-- MAIN EDITOR -->
+    <main class="main">
+      <div class="top-bar">
+        <div>
+          <span class="eyebrow">Poem editor</span>
+          <h1>Draft now. Publish<br>when it feels true.</h1>
+          <p>Titles, body, tags, genres, review preferences — all in one workspace.</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-draft" onclick="saveDraft()">💾 Save draft</button>
+          <button class="btn btn-preview" onclick="syncPreview()">👁 Preview</button>
+          <button class="btn btn-publish" onclick="publishPoem()">✦ Publish poem</button>
+        </div>
+      </div>
+
+      <div class="editor-layout">
+        <!-- EDITOR -->
+        <div class="panel">
+          <div class="form-grid">
+            <div class="field">
+              <label>Poem title <span style="color:#e05c5c">*</span></label>
+              <input id="title" value="" oninput="syncPreview(); this.classList.remove('error')" placeholder="Untitled poem"/>
+            </div>
+            <div class="form-row">
+              <div class="field" style="margin:0">
+                <label>Subtitle / prompt</label>
+                <input id="subtitle" value="" placeholder="Optional subtitle or writing prompt"/>
+              </div>
+              <div class="field" style="margin:0">
+                <label>Language</label>
+                <select id="language" onchange="syncPreview()">
+                  <option>English</option><option>Tamil</option><option>Bilingual</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row-3">
+              <div class="field" style="margin:0">
+                <label>Genre</label>
+                <select id="genre" onchange="syncPreview()">
+                  <option>Free verse</option><option>Sonnet</option><option>Haiku</option><option>Ghazal</option><option>Narrative</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0">
+                <label>Mood</label>
+                <select id="mood" onchange="syncPreview()">
+                  <option>Reflective</option><option>Hopeful</option><option>Melancholic</option><option>Joyful</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0">
+                <label>Visibility</label>
+                <select id="visibility">
+                  <option>Public</option><option>Connections only</option><option>Private draft</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Editor tools</label>
+              <div class="toolbar">
+                <button type="button" class="tool-btn" id="tool-linebreaks" onclick="applyTool('linebreaks', this)" title="Insert a blank line between stanzas">¶ Line breaks</button>
+                <button type="button" class="tool-btn" id="tool-stanza" onclick="applyTool('stanza', this)" title="Add an extra stanza space at cursor">⇥ Stanza spacing</button>
+                <button type="button" class="tool-btn" id="tool-note" onclick="applyTool('note', this)" title="Insert an inline [note: ] marker">📎 Add note</button>
+                <button type="button" class="tool-btn" id="tool-tag" onclick="applyTool('tag', this)" title="Wrap selected text with imagery tag">🏷 Tag imagery</button>
+                <button type="button" class="tool-btn" id="tool-focus" onclick="applyTool('focus', this)" title="Toggle distraction-free writing mode">🔤 Focus mode</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Poem body <span style="color:#e05c5c">*</span></label>
+              <textarea id="body" oninput="syncPreview(); updateWordCount(); this.classList.remove('error')" placeholder="Begin your poem here…"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="field" style="margin:0">
+                <label>Tags</label>
+                <input id="tags" value="" placeholder="e.g. sea, memory, return"/>
+              </div>
+              <div class="field" style="margin:0">
+                <label>Request review from</label>
+                <input id="reviewers" value="" placeholder="@username, @username"/>
+              </div>
+            </div>
+          </div>
+          <div class="meta-pills">
+            <span class="pill gold" id="saveIndicator">New draft</span>
+            <span class="pill">Version 01</span>
+            <span class="pill" id="wordPill">Read time: ~1 min</span>
+            <span class="pill">Tamil Nadu, India</span>
+          </div>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="panel preview-panel">
+          <span class="eyebrow">Live preview</span>
+          <div class="preview-header">
+            <div class="preview-title" id="previewTitle">Your poem title</div>
+            <div class="preview-meta"><span id="previewGenre">Free verse</span> · <span id="previewMood">Reflective</span> · <span id="previewLang">English</span></div>
+          </div>
+          <div class="preview-poem" id="previewBody">Start writing to see your poem here…</div>
+          <div class="mini-grid">
+            <div class="mini"><strong>📢 Publishing note</strong><p>Readers will see title, tags, body, and your review preferences once published.</p></div>
+            <div class="mini"><strong>🚀 Next step</strong><p>Save as draft or publish directly to your profile and the VerseLink feed.</p></div>
+            <div class="mini"><strong>👥 Reviewers</strong><p id="reviewerInfo">@saramir and @ritvikvarma will be notified when you publish.</p></div>
+            <div class="mini"><strong>📊 Your stats</strong><p>Your last poem received 4.8 stars and 32 reviews — this one looks strong.</p></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── Theme ──────────────────────────────────────────
+    const getTheme = () => localStorage.getItem('vl_theme') || 'dark';
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('vl_theme', t);
+      const toggle = document.getElementById('themeToggle');
+      const label = document.getElementById('themeLabel');
+      if (t === 'dark') { toggle.classList.add('on'); if(label) label.textContent='Dark mode'; }
+      else { toggle.classList.remove('on'); if(label) label.textContent='Light mode'; }
+    }
+    function toggleTheme() { applyTheme(getTheme() === 'dark' ? 'light' : 'dark'); }
+    applyTheme(getTheme());
+
+    // ── Auth guard ─────────────────────────────────────
+    const user = (() => { try { return JSON.parse(sessionStorage.getItem('vl_user')); } catch { return null; } })();
+    if (!user) location.href = 'login.html';
+    else {
+      document.getElementById('sidebarAvatar').textContent = user.initials || '?';
+      document.getElementById('sidebarName').textContent = user.name || '—';
+    }
+    function doLogout() { if (confirm('Sign out of VerseLink?')) { sessionStorage.removeItem('vl_user'); location.href = 'login.html'; } }
+
+    // ── Editor logic ───────────────────────────────────
+    function syncPreview() {
+      const titleVal = document.getElementById('title').value;
+      const bodyVal  = document.getElementById('body').value;
+      document.getElementById('previewTitle').textContent = titleVal || 'Your poem title';
+      document.getElementById('previewBody').textContent  = bodyVal  || 'Start writing to see your poem here…';
+      document.getElementById('previewGenre').textContent = document.getElementById('genre').value;
+      document.getElementById('previewMood').textContent  = document.getElementById('mood').value;
+      document.getElementById('previewLang').textContent  = document.getElementById('language').value;
+      const r = document.getElementById('reviewers').value.trim();
+      document.getElementById('reviewerInfo').textContent = r ? `${r} will be notified when you publish.` : 'No reviewers specified yet.';
+    }
+
+    function updateWordCount() {
+      const words = document.getElementById('body').value.trim().split(/\s+/).filter(Boolean).length;
+      const mins  = Math.max(1, Math.ceil(words / 200));
+      document.getElementById('wordPill').textContent = words ? `${words} words · ~${mins} min read` : 'Read time: ~1 min';
+    }
+
+    // ── Toolbar tools ──────────────────────────────────
+    let focusActive = false;
+    function applyTool(tool, btn) {
+      const ta = document.getElementById('body');
+      const start = ta.selectionStart;
+      const end   = ta.selectionEnd;
+      const val   = ta.value;
+
+      if (tool === 'linebreaks') {
+        // Insert a blank line (stanza break) at cursor position
+        const insert = '\n\n';
+        ta.value = val.slice(0, start) + insert + val.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + insert.length;
+        ta.focus();
+        showToast('¶ Blank line inserted at cursor.');
+
+      } else if (tool === 'stanza') {
+        // Add double stanza gap at cursor
+        const insert = '\n\n\n';
+        ta.value = val.slice(0, start) + insert + val.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + insert.length;
+        ta.focus();
+        showToast('⇥ Extra stanza space added.');
+
+      } else if (tool === 'note') {
+        // Wrap selection or insert [note: ] marker
+        const sel = val.slice(start, end);
+        const insert = sel ? `[note: ${sel}]` : '[note: ]';
+        ta.value = val.slice(0, start) + insert + val.slice(end);
+        ta.selectionStart = start + 7;
+        ta.selectionEnd   = start + insert.length - (sel ? 1 : 1);
+        ta.focus();
+        showToast('📎 Note marker added — edit the bracketed text.');
+
+      } else if (tool === 'tag') {
+        // Wrap selected text with {imagery: } tag
+        const sel = val.slice(start, end);
+        if (!sel) { showToast('🏷 Select some text first, then click Tag imagery.'); return; }
+        const insert = `{imagery: ${sel}}`;
+        ta.value = val.slice(0, start) + insert + val.slice(end);
+        ta.selectionStart = start;
+        ta.selectionEnd   = start + insert.length;
+        ta.focus();
+        showToast('🏷 Imagery tag applied to selection.');
+
+      } else if (tool === 'focus') {
+        focusActive = !focusActive;
+        btn.classList.toggle('active', focusActive);
+        // Hide everything except the textarea in focus mode
+        document.querySelector('.top-bar').style.display        = focusActive ? 'none' : '';
+        document.querySelector('.preview-panel').style.display  = focusActive ? 'none' : '';
+        document.querySelector('.editor-layout').style.gridTemplateColumns = focusActive ? '1fr' : '';
+        document.querySelector('.sidebar').style.display        = focusActive ? 'none' : '';
+        document.querySelector('.shell').style.gridTemplateColumns = focusActive ? '1fr' : '';
+        ta.style.minHeight = focusActive ? '70vh' : '280px';
+        ta.focus();
+        showToast(focusActive ? '🔤 Focus mode on — no distractions.' : '🔤 Focus mode off.');
+        return; // don't fall through to syncPreview
+      }
+
+      syncPreview();
+      updateWordCount();
+    }
+
+    // ── Auto-save ──────────────────────────────────────
+    let saveTimer;
+    const markUnsaved = () => {
+      clearTimeout(saveTimer);
+      const ind = document.getElementById('saveIndicator');
+      ind.textContent = '● Unsaved changes';
+      ind.style.color = '#f87171';
+      ind.style.borderColor = 'rgba(248,113,113,0.3)';
+      saveTimer = setTimeout(autoSave, 2000);
+    };
+    document.getElementById('body').addEventListener('input', markUnsaved);
+    document.getElementById('title').addEventListener('input', markUnsaved);
+
+    function autoSave() {
+      const ind = document.getElementById('saveIndicator');
+      ind.textContent = '✓ Auto-saved';
+      ind.style.color = 'var(--accent)';
+      ind.style.borderColor = 'rgba(79,156,247,0.3)';
+      document.getElementById('draftMsg').textContent = 'Draft auto-saved';
+    }
+
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
+    function saveDraft() { autoSave(); showToast('✓ Draft saved — you can close the tab safely.'); }
+
+    function publishPoem() {
+      const title  = document.getElementById('title').value.trim();
+      const body   = document.getElementById('body').value.trim();
+      let ok = true;
+      if (!title) { document.getElementById('title').classList.add('error'); ok = false; }
+      if (!body)  { document.getElementById('body').classList.add('error');  ok = false; }
+      if (!ok) { showToast('⚠ Please add a title and poem body first.'); return; }
+
+      // Save to localStorage so explore.html can show this poem
+      const poem = {
+        id: Date.now(),
+        title,
+        body,
+        genre:    document.getElementById('genre').value,
+        mood:     document.getElementById('mood').value,
+        language: document.getElementById('language').value,
+        tags:     document.getElementById('tags') ? document.getElementById('tags').value : '',
+        author:   user ? user.name : 'Anonymous',
+        initials: user ? (user.initials || '?') : '?',
+        publishedAt: new Date().toISOString()
+      };
+      const existing = JSON.parse(localStorage.getItem('vl_published_poems') || '[]');
+      existing.unshift(poem);
+      localStorage.setItem('vl_published_poems', JSON.stringify(existing.slice(0, 50)));
+
+      autoSave();
+      showToast('🎉 Published to VerseLink — your reviewers have been notified!');
+      setTimeout(() => location.href = 'explore.html', 1800);
+    }
+
+    syncPreview();
+    updateWordCount();
+  </script>
+</body>
+</html>

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VerseLink — Reviews</title>
+  
+  <style>
+    :root { --accent:#4f9cf7; --accent-light:#82bfff; --primary:#1a4fad; --primary-light:#2d6fd4; --rose:#c4556a; --star:#e8c030; --ink:#12100e; }
+    [data-theme="dark"] {
+      --bg:#060a14; --surface:rgba(8,16,36,0.95); --sidebar-bg:rgba(6,12,28,0.98);
+      --text:#f0ebe0; --text-dim:rgba(240,235,224,0.55); --muted:rgba(240,235,224,0.42);
+      --line:rgba(79,156,247,0.18); --input-bg:rgba(240,235,224,0.05);
+      --card-border:rgba(240,235,224,0.09); --input-border:rgba(240,235,224,0.1);
+    }
+    [data-theme="light"] {
+      --bg:#eaf1fd; --surface:rgba(255,252,245,0.96); --sidebar-bg:rgba(235,244,255,0.99);
+      --text:#12100e; --text-dim:rgba(18,16,14,0.62); --muted:rgba(18,16,14,0.48);
+      --line:rgba(79,156,247,0.3); --input-bg:rgba(18,16,14,0.04);
+      --card-border:rgba(18,16,14,0.09); --input-border:rgba(18,16,14,0.14);
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Times New Roman',Times,serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; transition:background 0.4s,color 0.4s; }
+    a { text-decoration:none; color:inherit; }
+    .anim-bg {
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+      background: linear-gradient(125deg, #060a14 0%, #0d1f4a 40%, #122060 70%, #060a14 100%);
+      background-size: 400% 400%;
+      animation: bgShift 18s ease infinite;
+    }
+    [data-theme="light"] .anim-bg {
+      background: linear-gradient(125deg, #eaf1fd 0%, #d0e4fb 40%, #bdd5f8 70%, #eaf1fd 100%);
+      background-size: 400% 400%;
+    }
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .grain { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.025; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:200px; }
+
+    /* SIDEBAR */
+    .shell { display:grid; grid-template-columns:230px 1fr; min-height:100vh; position:relative; z-index:2; }
+    .sidebar { background:var(--sidebar-bg); border-right:1px solid var(--line); padding:22px 14px; display:flex; flex-direction:column; gap:14px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:background 0.4s; }
+    .logo { display:flex; align-items:center; gap:11px; padding:4px 6px; }
+    .logo-mark { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--accent); display:grid; place-items:center; flex-shrink:0; }
+    .logo-mark svg { width:17px; height:17px; stroke:var(--accent); }
+    .logo-name { font-family:'Times New Roman',Times,serif; font-size:1.15rem; font-weight:600; color:var(--text); }
+    .sidebar-divider { height:1px; background:var(--line); }
+    .menu { display:grid; gap:3px; }
+    .menu a { padding:10px 12px; border-radius:11px; font-size:0.875rem; color:var(--muted); display:flex; align-items:center; gap:10px; transition:all 0.22s; border:1px solid transparent; }
+    .menu a .icon { font-size:1rem; line-height:1; flex-shrink:0; }
+    .menu a:hover { background:var(--input-bg); color:var(--text); }
+    .menu a.active { background:rgba(79,156,247,0.1); color:var(--accent); border-color:rgba(79,156,247,0.18); }
+    .sidebar-user { display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:11px; background:var(--input-bg); border:1px solid var(--line); cursor:pointer; transition:all 0.2s; position:relative; }
+    .sidebar-user:hover { border-color:var(--accent); }
+    .s-avatar { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--primary),var(--primary-light)); display:grid; place-items:center; font-weight:700; font-size:0.7rem; color:#fff; flex-shrink:0; }
+    .s-user-name { font-size:0.83rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .s-user-role { font-size:0.7rem; color:var(--muted); }
+    .sidebar-theme { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:11px; background:var(--input-bg); border:1px solid var(--line); }
+    .sidebar-theme span { font-size:0.8rem; color:var(--muted); }
+    .toggle-switch { width:38px; height:20px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; border:none; transition:background 0.3s; flex-shrink:0; }
+    .toggle-switch.on { background:var(--accent); }
+    .toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.3s; }
+    .toggle-switch.on::after { transform:translateX(18px); }
+    .sidebar-bottom { margin-top:auto; display:flex; flex-direction:column; gap:10px; }
+    .user-dropdown-sb { position:absolute; bottom:calc(100% + 8px); left:0; right:0; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:8px; box-shadow:0 -16px 40px rgba(0,0,0,0.3); z-index:50; opacity:0; transform:translateY(8px) scale(0.96); pointer-events:none; transition:all 0.22s cubic-bezier(0.22,1,0.36,1); backdrop-filter:blur(20px); }
+    .user-dropdown-sb.open { opacity:1; transform:translateY(0) scale(1); pointer-events:all; }
+    .dd-item { padding:8px 10px; border-radius:9px; font-size:0.83rem; color:var(--text-dim); cursor:pointer; transition:all 0.2s; display:block; }
+    .dd-item:hover { background:rgba(79,156,247,0.1); color:var(--accent); }
+    .dd-logout { color:#e05c5c; }
+    .dd-logout:hover { background:rgba(224,92,92,0.1); color:#e05c5c; }
+
+    /* MAIN */
+    .main { padding:32px 28px 80px; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .eyebrow { font-size:0.68rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:10px; }
+    .page-head { margin-bottom:28px; animation:fadeUp 0.5s ease both; }
+    .page-head h1 { font-family:'Times New Roman',Times,serif; font-size:clamp(2.2rem,3.5vw,3.4rem); font-weight:400; line-height:1.0; color:var(--text); }
+    .page-head h1 em { color:var(--accent-light); font-style:italic; }
+
+    .layout { display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px; align-items:start; }
+    .panel { background:var(--surface); border:1px solid var(--card-border); border-radius:24px; padding:28px; backdrop-filter:blur(14px); animation:fadeUp 0.5s ease both; transition:background 0.4s; }
+    .panel:nth-child(2) { animation-delay:0.08s; }
+
+    /* POEM DISPLAY */
+    .poem-header { margin-bottom:18px; }
+    .poem-selector { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    .poem-sel-btn { padding:7px 14px; border-radius:999px; font-size:0.8rem; cursor:pointer; border:1px solid var(--card-border); background:transparent; color:var(--muted); transition:all 0.22s; font-family:'Times New Roman',Times,serif; }
+    .poem-sel-btn.active { background:rgba(79,156,247,0.12); border-color:rgba(79,156,247,0.3); color:var(--accent); }
+    .poem-header h2 { font-family:'Times New Roman',Times,serif; font-size:1.9rem; font-weight:400; margin-bottom:5px; color:var(--text); }
+    .poem-header .meta { color:var(--muted); font-size:0.86rem; }
+    .poem-body { background:linear-gradient(135deg,rgba(79,156,247,0.06),rgba(22,93,99,0.06)); border:1px solid rgba(79,156,247,0.16); border-radius:16px; padding:26px; font-family:'Times New Roman',Times,serif; font-size:1.1rem; line-height:2.0; font-style:italic; color:var(--text-dim); margin-bottom:22px; position:relative; overflow:hidden; }
+    .poem-body::before { content:'"'; position:absolute; top:-14px; left:16px; font-size:7rem; color:rgba(79,156,247,0.06); line-height:1; font-family:'Times New Roman',Times,serif; }
+    .poem-line { display:block; margin-bottom:2px; }
+    .poem-stanza { margin-bottom:16px; }
+
+    .score-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+    .score-card { padding:16px 14px; border-radius:14px; text-align:center; background:var(--input-bg); border:1px solid var(--card-border); transition:all 0.28s; }
+    .score-card:hover { border-color:var(--accent); background:rgba(79,156,247,0.07); }
+    .score-card strong { display:block; font-family:'Times New Roman',Times,serif; font-size:2rem; font-weight:400; color:var(--accent-light); }
+    .score-card span { font-size:0.76rem; color:var(--muted); }
+
+    .reviews-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .reviews-head h3 { font-family:'Times New Roman',Times,serif; font-size:1.35rem; font-weight:400; color:var(--text); }
+    .reviews-head .count { font-size:0.8rem; color:var(--muted); background:var(--input-bg); padding:4px 11px; border-radius:999px; }
+    .review-list { display:grid; gap:12px; }
+    .review-card { padding:18px; border-radius:14px; background:var(--input-bg); border:1px solid var(--card-border); transition:all 0.28s; animation:fadeUp 0.4s ease both; }
+    .review-card:hover { border-color:rgba(79,156,247,0.28); }
+    .review-card.new-review { border-color:rgba(74,222,128,0.3); background:rgba(74,222,128,0.04); }
+    .review-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:10px; }
+    .reviewer-info .rname { font-weight:500; font-size:0.93rem; color:var(--text); }
+    .reviewer-info .rrole { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+    .stars { color:var(--star); font-size:1rem; letter-spacing:2px; }
+    .review-headline { font-size:0.88rem; font-weight:500; color:var(--text); margin-bottom:6px; }
+    .review-text { color:var(--text-dim); font-size:0.88rem; line-height:1.7; }
+    .review-meta-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+    .review-date { font-size:0.74rem; color:var(--muted); }
+    .btn-helpful { padding:5px 12px; border-radius:8px; border:1px solid var(--card-border); background:transparent; color:var(--muted); font-family:'Times New Roman',Times,serif; font-size:0.78rem; cursor:pointer; transition:all 0.28s; }
+    .btn-helpful:hover, .btn-helpful.liked { border-color:var(--accent); color:var(--accent); }
+    .no-reviews { text-align:center; padding:32px 20px; color:var(--muted); font-size:0.9rem; }
+    .no-reviews .icon { font-size:2rem; display:block; margin-bottom:10px; opacity:0.4; }
+
+    /* REVIEW FORM */
+    .form-head { margin-bottom:22px; }
+    .form-head h2 { font-family:'Times New Roman',Times,serif; font-size:1.7rem; font-weight:400; margin-bottom:5px; color:var(--text); }
+    .form-head p { color:var(--muted); font-size:0.86rem; line-height:1.6; }
+    .star-rating { display:flex; gap:6px; margin-bottom:18px; }
+    .star-btn { background:none; border:none; cursor:pointer; font-size:1.7rem; color:var(--card-border); transition:all 0.18s; line-height:1; }
+    .star-btn:hover, .star-btn.active { color:var(--star); transform:scale(1.18); }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-bottom:14px; }
+    .field { margin-bottom:14px; }
+    .field label { display:block; font-size:0.8rem; color:var(--muted); margin-bottom:7px; letter-spacing:0.04em; }
+    .field input, .field textarea, .field select { width:100%; padding:12px 14px; background:var(--input-bg); border:1.5px solid var(--input-border); border-radius:12px; color:var(--text); font-family:'Times New Roman',Times,serif; font-size:0.88rem; transition:all 0.28s; outline:none; }
+    .field input::placeholder, .field textarea::placeholder { color:var(--muted); opacity:0.6; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color:var(--accent); background:rgba(79,156,247,0.04); }
+    .field input.error, .field textarea.error { border-color:#e05c5c; }
+    .field select option { background:var(--bg); color:var(--text); }
+    .field textarea { resize:vertical; min-height:130px; line-height:1.7; }
+    .word-count { font-size:0.76rem; color:var(--muted); text-align:right; margin-top:5px; }
+    .field-error { font-size:0.76rem; color:#e05c5c; margin-top:4px; display:none; }
+    .field-error.show { display:block; }
+    .form-actions { display:flex; gap:9px; margin-top:4px; }
+    .btn-submit { flex:1; padding:13px; background:linear-gradient(135deg,var(--primary),var(--primary-light)); border:none; border-radius:13px; color:#fff; font-family:'Times New Roman',Times,serif; font-size:0.92rem; font-weight:500; cursor:pointer; transition:all 0.28s; }
+    .btn-submit:hover { transform:translateY(-2px); box-shadow:0 8px 26px rgba(22,93,99,0.4); }
+    .btn-save { padding:13px 16px; border:1px solid var(--card-border); border-radius:13px; background:transparent; color:var(--muted); font-family:'Times New Roman',Times,serif; font-size:0.88rem; cursor:pointer; transition:all 0.28s; }
+    .btn-save:hover { border-color:var(--text); color:var(--text); }
+
+    .toast { position:fixed; bottom:26px; right:26px; z-index:100; background:var(--surface); backdrop-filter:blur(12px); border:1px solid rgba(30,140,150,0.4); color:var(--text); padding:13px 20px; border-radius:13px; font-size:0.86rem; transform:translateY(80px); opacity:0; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); }
+    .toast.show { transform:translateY(0); opacity:1; }
+
+    @media (max-width:960px) { .layout{grid-template-columns:1fr} }
+    @media (max-width:860px) { .shell{display:block} .main{padding:20px 16px 60px} .form-row{grid-template-columns:1fr} .score-row{grid-template-columns:repeat(2,1fr)} }
+  </style>
+</head>
+<body>
+  <div class="anim-bg"></div>
+  <div class="grain"></div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="logo" href="feed.html">
+        <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18c6-1 9-6 9-12 2 5 3 8 5 10-2 2-5 3-9 3H5Z"/><path d="M8 14c1.5-1.2 2.6-2.8 3.3-4.8"/></svg></div>
+        <span class="logo-name">VerseLink</span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <nav class="menu">
+        <a href="feed.html"><span class="icon">📜</span>Feed</a>
+        <a href="explore.html"><span class="icon">🔍</span>Explore</a>
+        <a class="active" href="review.html"><span class="icon">✍️</span>Reviews</a>
+        <a href="post-content.html"><span class="icon">📝</span>Post content</a>
+      </nav>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-theme">
+          <span id="themeLabel">Dark mode</span>
+          <button class="toggle-switch on" id="themeToggle" onclick="toggleTheme()"></button>
+        </div>
+        <div class="sidebar-user" id="sidebarUser" onclick="toggleUserMenu()">
+          <div class="s-avatar" id="sidebarAvatar">?</div>
+          <div style="flex:1;min-width:0">
+            <div class="s-user-name" id="sidebarName">Loading…</div>
+            <div class="s-user-role">My account</div>
+          </div>
+          <div class="user-dropdown-sb" id="userDropdown">
+            <a class="dd-item" href="feed.html">📜 My feed</a>
+            <a class="dd-item" href="post-content.html">✦ Write poem</a>
+            <div class="dd-item dd-logout" onclick="doLogout()">↩ Sign out</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <span class="eyebrow">Peer review hub</span>
+        <h1>Thoughtful critique,<br>not <em>empty praise.</em></h1>
+      </div>
+
+      <section class="layout">
+        <!-- LEFT: poem + reviews -->
+        <div class="panel">
+          <span class="eyebrow">Poem under review</span>
+          <div class="poem-selector">
+            <button class="poem-sel-btn active" onclick="selectPoem(this,0)">My Mother's Atlas</button>
+            <button class="poem-sel-btn" onclick="selectPoem(this,1)">The Grammar of Waiting</button>
+            <button class="poem-sel-btn" onclick="selectPoem(this,2)">First Rain on Red Soil</button>
+          </div>
+          <div class="poem-header">
+            <h2 id="poemTitle">My Mother's Atlas</h2>
+            <div class="meta" id="poemMeta">By Leela Thomas · Narrative poetry · 3 min read · Published 2 days ago</div>
+          </div>
+          <div class="poem-body" id="poemBody">
+            <div class="poem-stanza">
+              <span class="poem-line">She kept the map in a steel trunk</span>
+              <span class="poem-line">alongside the certificates, the photographs,</span>
+              <span class="poem-line">the folded letter that was never sent.</span>
+              <span class="poem-line">Every crease held a country she had left in portions.</span>
+            </div>
+            <div class="poem-stanza">
+              <span class="poem-line">She did not grieve aloud.</span>
+              <span class="poem-line">Grief, for her, was a domestic thing —</span>
+              <span class="poem-line">folded into the same drawer as the ration cards,</span>
+              <span class="poem-line">useful only when you knew where to look.</span>
+            </div>
+            <div class="poem-stanza">
+              <span class="poem-line">I am learning to read her silences</span>
+              <span class="poem-line">the way cartographers read coastlines —</span>
+              <span class="poem-line">every indentation a word she chose not to say,</span>
+              <span class="poem-line">every peninsula a memory still arriving.</span>
+            </div>
+          </div>
+          <div class="score-row">
+            <div class="score-card"><strong id="avgRating">4.9</strong><span>Average rating</span></div>
+            <div class="score-card"><strong id="reviewCount">—</strong><span>Reviews</span></div>
+            <div class="score-card"><strong id="recommendPct">—</strong><span>Would recommend</span></div>
+          </div>
+          <div class="reviews-head">
+            <h3>Community reviews</h3>
+            <span class="count" id="reviewCountBadge">0 reviews</span>
+          </div>
+          <div class="review-list" id="reviewList">
+            <div class="no-reviews"><span class="icon">✍️</span>No reviews yet — be the first to leave one!</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: review form -->
+        <aside class="panel">
+          <div class="form-head">
+            <span class="eyebrow">Leave a review</span>
+            <h2>Help the poet improve</h2>
+            <p>Write a thoughtful review with specific strengths and constructive suggestions.</p>
+          </div>
+
+          <div class="field">
+            <label>Your rating <span style="color:#e05c5c">*</span></label>
+            <div class="star-rating" id="starRating">
+              <button class="star-btn" onclick="setRating(1)">★</button>
+              <button class="star-btn" onclick="setRating(2)">★</button>
+              <button class="star-btn" onclick="setRating(3)">★</button>
+              <button class="star-btn" onclick="setRating(4)">★</button>
+              <button class="star-btn" onclick="setRating(5)">★</button>
+            </div>
+            <div class="field-error" id="rating-err">Please select a star rating.</div>
+          </div>
+
+          <div class="field">
+            <label>Your name <span style="color:#e05c5c">*</span></label>
+            <input id="reviewerName" type="text" placeholder="Your name or pen name" oninput="this.classList.remove('error')"/>
+            <div class="field-error" id="name-err">Please enter your name.</div>
+          </div>
+
+          <div class="form-row">
+            <div class="field" style="margin:0">
+              <label>Focus area</label>
+              <select id="focusArea">
+                <option>Imagery</option><option>Rhythm</option><option>Emotional depth</option><option>Structure</option><option>Language</option>
+              </select>
+            </div>
+            <div class="field" style="margin:0">
+              <label>Tone</label>
+              <select id="reviewTone">
+                <option>Constructive</option><option>Encouraging</option><option>Technical</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Review headline <span style="color:#e05c5c">*</span></label>
+            <input id="headline" type="text" placeholder="What stood out most?" oninput="this.classList.remove('error')"/>
+            <div class="field-error" id="headline-err">Please add a headline.</div>
+          </div>
+
+          <div class="field">
+            <label>Your detailed feedback <span style="color:#e05c5c">*</span></label>
+            <textarea id="reviewText" rows="6" placeholder="Share specific strengths, what moved you, what could be sharper…" oninput="updateWordCount(); this.classList.remove('error')"></textarea>
+            <div class="word-count" id="wordCount">0 words</div>
+            <div class="field-error" id="review-err">Please write at least 10 words of feedback.</div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-submit" onclick="submitReview()">Publish review</button>
+            <button class="btn-save" onclick="saveDraftReview()">Save draft</button>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── Theme ──────────────────────────────────────────
+    const getTheme = () => localStorage.getItem('vl_theme') || 'dark';
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('vl_theme', t);
+      const tog = document.getElementById('themeToggle');
+      const lbl = document.getElementById('themeLabel');
+      if (t === 'dark') { tog.classList.add('on'); lbl.textContent = 'Dark mode'; }
+      else { tog.classList.remove('on'); lbl.textContent = 'Light mode'; }
+    }
+    function toggleTheme() { applyTheme(getTheme() === 'dark' ? 'light' : 'dark'); }
+    applyTheme(getTheme());
+
+    // ── Auth ───────────────────────────────────────────
+    const user = (() => { try { return JSON.parse(sessionStorage.getItem('vl_user')); } catch { return null; } })();
+    if (!user) location.href = 'login.html';
+    else {
+      document.getElementById('sidebarAvatar').textContent = user.initials || '?';
+      document.getElementById('sidebarName').textContent = user.name || '—';
+      // Pre-fill reviewer name from logged-in user
+      document.getElementById('reviewerName').value = user.name || '';
+    }
+    function doLogout() { sessionStorage.removeItem('vl_user'); location.href = 'login.html'; }
+    function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('open'); }
+    document.addEventListener('click', e => { if (!e.target.closest('.sidebar-user')) document.getElementById('userDropdown').classList.remove('open'); });
+
+    // ── Poems data ─────────────────────────────────────
+    const POEMS = [
+      {
+        id: 'mothers-atlas',
+        title: "My Mother's Atlas",
+        meta: 'By Leela Thomas · Narrative poetry · 3 min read · Published 2 days ago',
+        body: `<div class="poem-stanza">
+          <span class="poem-line">She kept the map in a steel trunk</span>
+          <span class="poem-line">alongside the certificates, the photographs,</span>
+          <span class="poem-line">the folded letter that was never sent.</span>
+          <span class="poem-line">Every crease held a country she had left in portions.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">She did not grieve aloud.</span>
+          <span class="poem-line">Grief, for her, was a domestic thing —</span>
+          <span class="poem-line">folded into the same drawer as the ration cards,</span>
+          <span class="poem-line">useful only when you knew where to look.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">I am learning to read her silences</span>
+          <span class="poem-line">the way cartographers read coastlines —</span>
+          <span class="poem-line">every indentation a word she chose not to say,</span>
+          <span class="poem-line">every peninsula a memory still arriving.</span>
+        </div>`,
+        seedReviews: [
+          { name:'Ritvik Varma', role:'Spoken word mentor · Bengaluru', rating:5, headline:'The cartography metaphor earns every line', text:'Patient and earned — it never feels forced. The restraint here is the greatest strength.', date:'2 days ago', helpful:18 },
+          { name:'Sara Mir', role:'Ghazal writer · Hyderabad', rating:5, headline:'Quietly devastating', text:'The domestic image of grief — folded next to ration cards — is the most powerful kind of understatement.', date:'2 days ago', helpful:12 },
+          { name:'Dev Kannan', role:'Haiku poet · Coimbatore', rating:4, headline:'Precise and moving', text:'The final stanza elevates the whole. I\'d consider tightening the second stanza slightly.', date:'Yesterday', helpful:7 }
+        ]
+      },
+      {
+        id: 'grammar-waiting',
+        title: 'The Grammar of Waiting',
+        meta: 'By Sara Mir · Ghazal · Urdu-inspired · Published 2 hours ago',
+        body: `<div class="poem-stanza">
+          <span class="poem-line">There is a tense we do not teach in school —</span>
+          <span class="poem-line">the continuous present of someone who has not arrived.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">I conjugate it every evening by the window,</span>
+          <span class="poem-line">declining your name into the quiet of the street.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">The city fills in the blanks you left behind —</span>
+          <span class="poem-line">a vendor's call, a passing headlight, a smell of rain.</span>
+        </div>`,
+        seedReviews: [
+          { name:'Ananya Krish', role:'Free verse poet · Chennai', rating:5, headline:'The opening line floored me', text:'"A tense we do not teach in school" is a concept so precise it almost shouldn\'t work — but it lands completely.', date:'1 hour ago', helpful:9 }
+        ]
+      },
+      {
+        id: 'first-rain',
+        title: 'First Rain on Red Soil',
+        meta: 'By Dev Kannan · Haiku sequence · Nature · Published Yesterday',
+        body: `<div class="poem-stanza">
+          <span class="poem-line">crows leave the wire —</span>
+          <span class="poem-line">the first cloud of the season</span>
+          <span class="poem-line">forgets to be shy</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">red soil remembers</span>
+          <span class="poem-line">what the sky keeps promising:</span>
+          <span class="poem-line">it always returns</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">children run inside —</span>
+          <span class="poem-line">grandmother leans into the smell</span>
+          <span class="poem-line">like an old argument won</span>
+        </div>`,
+        seedReviews: [
+          { name:'Leela Thomas', role:'Narrative poet · Kochi', rating:5, headline:'The grandmother image is perfect', text:'The final haiku — especially "like an old argument won" — is flawless. Restraint and reward in equal measure.', date:'Yesterday', helpful:11 }
+        ]
+      }
+    ];
+
+    let currentPoemIdx = 0;
+
+    // ── Persistent Reviews Storage ─────────────────────
+    const STORAGE_KEY = 'vl_reviews';
+
+    function loadReviews() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    }
+    function saveReviews(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    function getReviewsForPoem(poemId) {
+      const all = loadReviews();
+      if (!all[poemId]) {
+        // Seed with default reviews on first load
+        all[poemId] = POEMS.find(p => p.id === poemId)?.seedReviews?.map(r => ({...r, id: Date.now() + Math.random(), helpfulBy: []})) || [];
+        saveReviews(all);
+      }
+      return all[poemId];
+    }
+    function addReviewForPoem(poemId, review) {
+      const all = loadReviews();
+      if (!all[poemId]) all[poemId] = POEMS.find(p => p.id === poemId)?.seedReviews?.map(r => ({...r, id: Date.now() + Math.random(), helpfulBy: []})) || [];
+      review.id = Date.now();
+      review.helpfulBy = [];
+      all[poemId].unshift(review);
+      saveReviews(all);
+    }
+    function toggleHelpful(poemId, reviewId) {
+      const all = loadReviews();
+      const reviews = all[poemId] || [];
+      const r = reviews.find(rv => rv.id === reviewId);
+      if (!r) return false;
+      const uid = user?.name || 'anon';
+      if (!r.helpfulBy) r.helpfulBy = [];
+      if (r.helpfulBy.includes(uid)) {
+        r.helpfulBy = r.helpfulBy.filter(u => u !== uid);
+        r.helpful = Math.max(0, (r.helpful || 0) - 1);
+      } else {
+        r.helpfulBy.push(uid);
+        r.helpful = (r.helpful || 0) + 1;
+      }
+      all[poemId] = reviews;
+      saveReviews(all);
+      return r.helpfulBy.includes(uid);
+    }
+
+    // ── Render Reviews ─────────────────────────────────
+    function renderReviews(poemId) {
+      const reviews = getReviewsForPoem(poemId);
+      const list = document.getElementById('reviewList');
+      const uid = user?.name || 'anon';
+
+      document.getElementById('reviewCount').textContent = reviews.length;
+      document.getElementById('reviewCountBadge').textContent = `${reviews.length} review${reviews.length !== 1 ? 's' : ''}`;
+
+      if (reviews.length === 0) {
+        list.innerHTML = '<div class="no-reviews"><span class="icon">✍️</span>No reviews yet — be the first to leave one!</div>';
+        document.getElementById('avgRating').textContent = '—';
+        document.getElementById('recommendPct').textContent = '—';
+        return;
+      }
+
+      // Compute stats
+      const avg = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+      const recommend = Math.round((reviews.filter(r => r.rating >= 4).length / reviews.length) * 100);
+      document.getElementById('avgRating').textContent = avg;
+      document.getElementById('recommendPct').textContent = recommend + '%';
+
+      list.innerHTML = reviews.map(r => {
+        const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+        const isLiked = (r.helpfulBy || []).includes(uid);
+        return `<div class="review-card" id="rc-${r.id}">
+          <div class="review-head">
+            <div class="reviewer-info">
+              <div class="rname">${escHtml(r.name)}</div>
+              ${r.role ? `<div class="rrole">${escHtml(r.role)}</div>` : ''}
+            </div>
+            <div class="stars">${stars}</div>
+          </div>
+          ${r.headline ? `<div class="review-headline">${escHtml(r.headline)}</div>` : ''}
+          <p class="review-text">${escHtml(r.text)}</p>
+          <div class="review-meta-row">
+            <span class="review-date">${escHtml(r.date)}${r.focusArea ? ` · ${escHtml(r.focusArea)}` : ''}</span>
+            <button class="btn-helpful ${isLiked ? 'liked' : ''}" onclick="markHelpful(this,'${poemId}',${r.id})">
+              ${isLiked ? '👍' : '👍'} Helpful (${r.helpful || 0})
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function markHelpful(btn, poemId, reviewId) {
+      toggleHelpful(poemId, reviewId);
+      renderReviews(POEMS[currentPoemIdx].id);
+    }
+
+    // ── Poem Selector ──────────────────────────────────
+    function selectPoem(btn, idx) {
+      currentPoemIdx = idx;
+      document.querySelectorAll('.poem-sel-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const poem = POEMS[idx];
+      document.getElementById('poemTitle').textContent = poem.title;
+      document.getElementById('poemMeta').textContent = poem.meta;
+      document.getElementById('poemBody').innerHTML = poem.body;
+      renderReviews(poem.id);
+    }
+
+    // ── Star Rating ────────────────────────────────────
+    let currentRating = 0;
+    function setRating(val) {
+      currentRating = val;
+      document.querySelectorAll('.star-btn').forEach((btn, i) => btn.classList.toggle('active', i < val));
+      document.getElementById('rating-err').classList.remove('show');
+    }
+
+    function updateWordCount() {
+      const w = document.getElementById('reviewText').value.trim().split(/\s+/).filter(Boolean).length;
+      document.getElementById('wordCount').textContent = `${w} word${w !== 1 ? 's' : ''}`;
+    }
+
+    // ── Submit Review ──────────────────────────────────
+    function submitReview() {
+      const name = document.getElementById('reviewerName').value.trim();
+      const headline = document.getElementById('headline').value.trim();
+      const text = document.getElementById('reviewText').value.trim();
+      const words = text.split(/\s+/).filter(Boolean).length;
+      let ok = true;
+
+      if (!currentRating) { document.getElementById('rating-err').classList.add('show'); ok = false; }
+      if (!name) { document.getElementById('reviewerName').classList.add('error'); document.getElementById('name-err').classList.add('show'); ok = false; }
+      if (!headline) { document.getElementById('headline').classList.add('error'); document.getElementById('headline-err').classList.add('show'); ok = false; }
+      if (words < 10) { document.getElementById('reviewText').classList.add('error'); document.getElementById('review-err').classList.add('show'); ok = false; }
+      if (!ok) return;
+
+      const poemId = POEMS[currentPoemIdx].id;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) + ' at ' + now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+
+      addReviewForPoem(poemId, {
+        name,
+        role: '',
+        rating: currentRating,
+        headline,
+        text,
+        focusArea: document.getElementById('focusArea').value,
+        tone: document.getElementById('reviewTone').value,
+        date: dateStr,
+        helpful: 0
+      });
+
+      renderReviews(poemId);
+
+      // Clear form
+      document.getElementById('headline').value = '';
+      document.getElementById('reviewText').value = '';
+      document.getElementById('wordCount').textContent = '0 words';
+      setRating(0);
+      document.getElementById('review-err').classList.remove('show');
+
+      showToast('✓ Review published — the poet will be notified!');
+
+      // Scroll to new review
+      setTimeout(() => { document.getElementById('reviewList').firstElementChild?.scrollIntoView({ behavior:'smooth', block:'center' }); }, 100);
+    }
+
+    function saveDraftReview() {
+      const draft = {
+        name: document.getElementById('reviewerName').value,
+        headline: document.getElementById('headline').value,
+        text: document.getElementById('reviewText').value,
+        rating: currentRating,
+        poemId: POEMS[currentPoemIdx].id
+      };
+      localStorage.setItem('vl_review_draft', JSON.stringify(draft));
+      showToast('Draft saved — it will be here when you return.');
+    }
+
+    function loadDraft() {
+      try {
+        const draft = JSON.parse(localStorage.getItem('vl_review_draft'));
+        if (!draft) return;
+        const poemIdx = POEMS.findIndex(p => p.id === draft.poemId);
+        if (poemIdx >= 0 && poemIdx !== currentPoemIdx) {
+          selectPoem(document.querySelectorAll('.poem-sel-btn')[poemIdx], poemIdx);
+        }
+        if (draft.name) document.getElementById('reviewerName').value = draft.name;
+        if (draft.headline) document.getElementById('headline').value = draft.headline;
+        if (draft.text) document.getElementById('reviewText').value = draft.text;
+        if (draft.rating) setRating(draft.rating);
+        updateWordCount();
+      } catch {}
+    }
+
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
+
+    // ── Init ───────────────────────────────────────────
+    // Read ?poem=N from URL (set by feed.html links) to open the right poem
+    const urlParam = new URLSearchParams(window.location.search).get('poem');
+    const startIdx = urlParam ? Math.max(0, POEMS.findIndex(p => p.id === parseInt(urlParam))) : 0;
+    if (startIdx > 0) {
+      selectPoem(document.querySelectorAll('.poem-sel-btn')[startIdx], startIdx);
+    } else {
+      renderReviews(POEMS[0].id);
+    }
+    loadDraft();
+  </script>
+</body>
+</html>

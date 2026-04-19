@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VerseLink — Your Feed</title>
+  
+  <style>
+    :root { --accent:#4f9cf7; --accent-light:#82bfff; --primary:#1a4fad; --primary-light:#2d6fd4; --rose:#c4556a; --ink:#12100e; }
+    [data-theme="dark"] {
+      --bg:#060a14; --surface:rgba(8,16,36,0.95); --sidebar-bg:rgba(6,12,28,0.98);
+      --text:#f0ebe0; --text-dim:rgba(240,235,224,0.55); --muted:rgba(240,235,224,0.42);
+      --line:rgba(79,156,247,0.18); --input-bg:rgba(240,235,224,0.05);
+      --card-border:rgba(240,235,224,0.09); --input-border:rgba(240,235,224,0.1);
+    }
+    [data-theme="light"] {
+      --bg:#eaf1fd; --surface:rgba(255,252,245,0.96); --sidebar-bg:rgba(235,244,255,0.99);
+      --text:#12100e; --text-dim:rgba(18,16,14,0.62); --muted:rgba(18,16,14,0.48);
+      --line:rgba(79,156,247,0.3); --input-bg:rgba(18,16,14,0.04);
+      --card-border:rgba(18,16,14,0.09); --input-border:rgba(18,16,14,0.14);
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Times New Roman',Times,serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; transition:background 0.4s,color 0.4s; }
+    a { text-decoration:none; color:inherit; }
+
+    .anim-bg {
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+      background: linear-gradient(125deg, #060a14 0%, #0d1f4a 40%, #122060 70%, #060a14 100%);
+      background-size: 400% 400%;
+      animation: bgShift 18s ease infinite;
+    }
+    [data-theme="light"] .anim-bg {
+      background: linear-gradient(125deg, #eaf1fd 0%, #d0e4fb 40%, #bdd5f8 70%, #eaf1fd 100%);
+      background-size: 400% 400%;
+    }
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .grain { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.025; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:200px; }
+
+    /* ── SHELL & SIDEBAR ── */
+    .shell { display:grid; grid-template-columns:230px 1fr; min-height:100vh; position:relative; z-index:2; }
+    .sidebar { background:var(--sidebar-bg); border-right:1px solid var(--line); padding:22px 14px; display:flex; flex-direction:column; gap:14px; position:sticky; top:0; height:100vh; overflow-y:auto; transition:background 0.4s; }
+    .logo { display:flex; align-items:center; gap:11px; padding:4px 6px; }
+    .logo-mark { width:36px; height:36px; border-radius:10px; border:1.5px solid var(--accent); display:grid; place-items:center; flex-shrink:0; }
+    .logo-mark svg { width:17px; height:17px; stroke:var(--accent); }
+    .logo-name { font-family:'Times New Roman',Times,serif; font-size:1.15rem; font-weight:600; color:var(--text); }
+    .sidebar-divider { height:1px; background:var(--line); }
+    .menu { display:grid; gap:3px; }
+    .menu a { padding:10px 12px; border-radius:11px; font-size:0.875rem; color:var(--muted); display:flex; align-items:center; gap:10px; transition:all 0.22s; border:1px solid transparent; }
+    .menu a .icon { font-size:1rem; line-height:1; flex-shrink:0; }
+    .menu a:hover { background:var(--input-bg); color:var(--text); }
+    .menu a.active { background:rgba(79,156,247,0.1); color:var(--accent); border-color:rgba(79,156,247,0.18); }
+    .sidebar-user { display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:11px; background:var(--input-bg); border:1px solid var(--line); cursor:pointer; transition:all 0.2s; position:relative; }
+    .sidebar-user:hover { border-color:var(--accent); }
+    .s-avatar { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--primary),var(--primary-light)); display:grid; place-items:center; font-weight:700; font-size:0.7rem; color:#fff; flex-shrink:0; }
+    .s-user-name { font-size:0.83rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .s-user-role { font-size:0.7rem; color:var(--muted); }
+    .sidebar-theme { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:11px; background:var(--input-bg); border:1px solid var(--line); }
+    .sidebar-theme span { font-size:0.8rem; color:var(--muted); }
+    .toggle-switch { width:38px; height:20px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; border:none; transition:background 0.3s; flex-shrink:0; }
+    .toggle-switch.on { background:var(--accent); }
+    .toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.3s; }
+    .toggle-switch.on::after { transform:translateX(18px); }
+    .sidebar-bottom { margin-top:auto; display:flex; flex-direction:column; gap:10px; }
+    .user-dropdown-sb { position:absolute; bottom:calc(100% + 8px); left:0; right:0; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:8px; box-shadow:0 -16px 40px rgba(0,0,0,0.3); z-index:50; opacity:0; transform:translateY(8px) scale(0.96); pointer-events:none; transition:all 0.22s cubic-bezier(0.22,1,0.36,1); backdrop-filter:blur(20px); }
+    .user-dropdown-sb.open { opacity:1; transform:translateY(0) scale(1); pointer-events:all; }
+    .dd-item { padding:8px 10px; border-radius:9px; font-size:0.83rem; color:var(--text-dim); cursor:pointer; transition:all 0.2s; display:block; }
+    .dd-item:hover { background:rgba(79,156,247,0.1); color:var(--accent); }
+    .dd-logout { color:#e05c5c; }
+    .dd-logout:hover { background:rgba(224,92,92,0.1); color:#e05c5c; }
+
+    /* ── MAIN CONTENT ── */
+    .main { padding:32px 28px 80px; display:flex; flex-direction:column; gap:0; max-width:900px; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+    .page-head { margin-bottom:28px; animation:fadeUp 0.5s ease both; }
+    .eyebrow { font-size:0.68rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:8px; }
+    .page-head h2 { font-family:'Times New Roman',Times,serif; font-size:2.2rem; font-weight:400; color:var(--text); }
+
+    .feed-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:24px; animation:fadeUp 0.5s ease both 0.05s; }
+    .feed-tab { padding:8px 16px; border-radius:999px; font-size:0.83rem; cursor:pointer; border:1px solid var(--card-border); background:transparent; color:var(--muted); transition:all 0.22s; font-family:'Times New Roman',Times,serif; }
+    .feed-tab.active, .feed-tab:hover { background:rgba(79,156,247,0.12); border-color:rgba(79,156,247,0.28); color:var(--accent); }
+
+    .feed-layout { display:grid; grid-template-columns:1fr 280px; gap:22px; align-items:start; }
+
+    .poems-col { display:flex; flex-direction:column; gap:16px; }
+    .poem-card { background:var(--surface); border:1px solid var(--card-border); border-radius:20px; overflow:hidden; transition:all 0.28s; animation:fadeUp 0.5s ease both; }
+    .poem-card:hover { border-color:rgba(79,156,247,0.32); transform:translateY(-2px); box-shadow:0 10px 36px rgba(0,0,0,0.18); }
+    .poem-card-body { padding:24px 24px 18px; }
+    .card-author { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    .avatar { width:40px; height:40px; border-radius:11px; display:grid; place-items:center; font-weight:700; font-size:0.85rem; flex-shrink:0; color:#fff; }
+    .a-indigo { background:linear-gradient(135deg,#1a4fad,#2d6fd4); }
+    .a-rose { background:linear-gradient(135deg,#0f2f7a,#4f9cf7); }
+    .a-rose { background:linear-gradient(135deg,#7c2d5e,#c4556a); }
+    .a-sage { background:linear-gradient(135deg,#2d5e3c,#4a8c5c); }
+    .a-slate { background:linear-gradient(135deg,#3c4a5e,#5a6a8c); }
+    .author-info .name { font-size:0.88rem; font-weight:500; color:var(--text); }
+    .author-info .when { font-size:0.76rem; color:var(--muted); margin-top:1px; }
+    .poem-title { font-family:'Times New Roman',Times,serif; font-size:1.45rem; font-weight:400; margin-bottom:5px; line-height:1.2; color:var(--text); }
+    .poem-genre { font-size:0.78rem; color:var(--accent); margin-bottom:12px; }
+    .poem-excerpt { font-family:'Times New Roman',Times,serif; font-style:italic; font-size:0.98rem; line-height:1.9; color:var(--text-dim); margin-bottom:14px; white-space:pre-line; }
+    .poem-tags { display:flex; gap:6px; flex-wrap:wrap; }
+    .ptag { padding:4px 10px; background:var(--input-bg); border:1px solid var(--card-border); border-radius:999px; font-size:0.74rem; color:var(--muted); }
+    .poem-card-footer { padding:13px 24px; border-top:1px solid var(--card-border); display:flex; align-items:center; justify-content:space-between; }
+    .poem-actions { display:flex; gap:12px; }
+    .action-btn { background:none; border:none; color:var(--muted); font-family:'Times New Roman',Times,serif; font-size:0.82rem; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.22s; padding:4px 6px; border-radius:8px; }
+    .action-btn:hover { color:var(--text); background:var(--input-bg); }
+    .action-btn.liked { color:var(--rose); }
+    .action-btn.bookmarked { color:var(--accent); }
+    .read-more { font-size:0.81rem; color:var(--accent); cursor:pointer; transition:color 0.2s; }
+    .read-more:hover { color:var(--accent-light); }
+
+    /* SIDEBAR PANELS */
+    .right-col { display:flex; flex-direction:column; gap:16px; position:sticky; top:32px; }
+    .side-panel { background:var(--surface); border:1px solid var(--card-border); border-radius:18px; padding:20px; }
+    .side-panel h3 { font-family:'Times New Roman',Times,serif; font-size:1.18rem; font-weight:400; margin:6px 0 14px; color:var(--text); }
+    .trending-item { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--card-border); cursor:pointer; transition:all 0.2s; }
+    .trending-item:last-child { border:none; padding-bottom:0; }
+    .trending-item:hover { padding-left:3px; }
+    .trend-num { font-family:'Times New Roman',Times,serif; font-size:1.2rem; color:rgba(79,156,247,0.3); width:22px; text-align:center; flex-shrink:0; }
+    .trend-info .t-title { font-size:0.85rem; font-weight:500; color:var(--text-dim); line-height:1.3; }
+    .trend-info .t-author { font-size:0.74rem; color:var(--muted); margin-top:2px; }
+    .trend-reads { font-size:0.74rem; color:var(--accent); margin-left:auto; white-space:nowrap; }
+    .suggest-item { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--card-border); }
+    .suggest-item:last-child { border:none; }
+    .s-info { flex:1; }
+    .s-info .s-name { font-size:0.86rem; font-weight:500; color:var(--text); }
+    .s-info .s-role { font-size:0.74rem; color:var(--muted); }
+    .btn-follow { padding:5px 13px; border:1px solid rgba(79,156,247,0.3); border-radius:999px; background:transparent; color:var(--accent); font-size:0.76rem; cursor:pointer; transition:all 0.22s; white-space:nowrap; font-family:'Times New Roman',Times,serif; }
+    .btn-follow:hover, .btn-follow.following { background:rgba(79,156,247,0.12); }
+    .prompt-card { background:linear-gradient(135deg,rgba(22,93,99,0.2),var(--surface)); border:1px solid rgba(22,93,99,0.3); border-radius:18px; padding:20px; }
+    .prompt-text { font-family:'Times New Roman',Times,serif; font-style:italic; font-size:1.04rem; line-height:1.7; color:var(--text-dim); margin:8px 0 14px; }
+    .btn-prompt { width:100%; padding:10px; background:var(--primary); border:none; border-radius:11px; color:#fff; font-family:'Times New Roman',Times,serif; font-size:0.84rem; font-weight:500; cursor:pointer; transition:all 0.3s; }
+    .btn-prompt:hover { background:var(--primary-light); }
+
+    .toast { position:fixed; bottom:26px; right:26px; z-index:100; background:var(--surface); backdrop-filter:blur(12px); border:1px solid rgba(30,140,150,0.4); color:var(--text); padding:13px 20px; border-radius:13px; font-size:0.86rem; transform:translateY(80px); opacity:0; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); }
+    .toast.show { transform:translateY(0); opacity:1; }
+
+    @media (max-width:860px) { .shell{display:block} .feed-layout{grid-template-columns:1fr} .right-col{display:none} .main{padding:20px 16px 60px} }
+  </style>
+</head>
+<body>
+  <div class="anim-bg"></div>
+  <div class="grain"></div>
+
+  <div class="shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <a class="logo" href="feed.html">
+        <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18c6-1 9-6 9-12 2 5 3 8 5 10-2 2-5 3-9 3H5Z"/><path d="M8 14c1.5-1.2 2.6-2.8 3.3-4.8"/></svg></div>
+        <span class="logo-name">VerseLink</span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <nav class="menu">
+        <a class="active" href="feed.html"><span class="icon">📜</span>Feed</a>
+        <a href="explore.html"><span class="icon">🔍</span>Explore</a>
+        <a href="review.html"><span class="icon">✍️</span>Reviews</a>
+        <a href="post-content.html"><span class="icon">📝</span>Post content</a>
+      </nav>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-theme">
+          <span id="themeLabel">Dark mode</span>
+          <button class="toggle-switch on" id="themeToggle" onclick="toggleTheme()"></button>
+        </div>
+        <div class="sidebar-user" id="sidebarUser" onclick="toggleUserMenu()">
+          <div class="s-avatar" id="sidebarAvatar">?</div>
+          <div>
+            <div class="s-user-name" id="sidebarName">Loading…</div>
+            <div class="s-user-role">My account</div>
+          </div>
+          <div class="user-dropdown-sb" id="userDropdown">
+            <a class="dd-item" href="post-content.html">✦ Write poem</a>
+            <a class="dd-item" href="explore.html">🔍 Explore poets</a>
+            <div class="dd-item dd-logout" onclick="doLogout()">↩ Sign out</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="page-head">
+        <span class="eyebrow">Your literary feed</span>
+        <h2 id="greetUser">Good morning ✦</h2>
+      </div>
+      <div class="feed-tabs">
+        <button class="feed-tab active" onclick="setTab(this)">All poems</button>
+        <button class="feed-tab" onclick="setTab(this)">Following</button>
+        <button class="feed-tab" onclick="setTab(this)">For review</button>
+        <button class="feed-tab" onclick="setTab(this)">Trending</button>
+      </div>
+
+      <div class="feed-layout">
+        <div class="poems-col">
+          <div class="poem-card" data-tab="all following for-review">
+            <div class="poem-card-body">
+              <div class="card-author"><div class="avatar a-rose">SM</div><div class="author-info"><div class="name">Sara Mir</div><div class="when">2 hours ago · Hyderabad</div></div></div>
+              <div class="poem-title">The Grammar of Waiting</div>
+              <div class="poem-genre">Ghazal · Urdu-inspired</div>
+              <div class="poem-excerpt">There is a tense we do not teach in school —
+the continuous present of someone who has not arrived.
+
+I conjugate it every evening by the window,
+declining your name into the quiet of the street.</div>
+              <div class="poem-tags"><span class="ptag">longing</span><span class="ptag">language</span><span class="ptag">urban</span><span class="ptag">ghazal</span></div>
+            </div>
+            <div class="poem-card-footer">
+              <div class="poem-actions">
+                <button class="action-btn" onclick="toggleLike(this)">♡ 48</button>
+                <button class="action-btn" onclick="location.href='review.html?poem=1'">✍ 12 reviews</button>
+                <button class="action-btn" onclick="toggleBookmark(this)">◇ Save</button>
+              </div>
+              <span class="read-more" onclick="location.href='review.html?poem=1'">Read full →</span>
+            </div>
+          </div>
+
+          <div class="poem-card" data-tab="all following">
+            <div class="poem-card-body">
+              <div class="card-author"><div class="avatar a-rose">RV</div><div class="author-info"><div class="name">Ritvik Varma</div><div class="when">5 hours ago · Bengaluru</div></div></div>
+              <div class="poem-title">On Being Searched</div>
+              <div class="poem-genre">Spoken word · Identity</div>
+              <div class="poem-excerpt">They swipe the wand over my body
+like they're reading something I haven't written yet.
+I try to remember my name
+the way I said it before airports made it strange.</div>
+              <div class="poem-tags"><span class="ptag">identity</span><span class="ptag">travel</span><span class="ptag">spoken word</span></div>
+            </div>
+            <div class="poem-card-footer">
+              <div class="poem-actions">
+                <button class="action-btn" onclick="toggleLike(this)">♡ 91</button>
+                <button class="action-btn" onclick="location.href='review.html?poem=2'">✍ 27 reviews</button>
+                <button class="action-btn" onclick="toggleBookmark(this)">◇ Save</button>
+              </div>
+              <span class="read-more" onclick="location.href='review.html?poem=2'">Read full →</span>
+            </div>
+          </div>
+
+          <div class="poem-card" data-tab="all trending">
+            <div class="poem-card-body">
+              <div class="card-author"><div class="avatar a-sage">DK</div><div class="author-info"><div class="name">Dev Kannan</div><div class="when">Yesterday · Coimbatore</div></div></div>
+              <div class="poem-title">First Rain on Red Soil</div>
+              <div class="poem-genre">Haiku sequence · Nature</div>
+              <div class="poem-excerpt">crows leave the wire —
+the first cloud of the season
+forgets to be shy
+
+red soil remembers
+what the sky keeps promising:
+it always returns</div>
+              <div class="poem-tags"><span class="ptag">haiku</span><span class="ptag">monsoon</span><span class="ptag">Tamil Nadu</span></div>
+            </div>
+            <div class="poem-card-footer">
+              <div class="poem-actions">
+                <button class="action-btn" onclick="toggleLike(this)">♡ 63</button>
+                <button class="action-btn" onclick="location.href='review.html?poem=3'">✍ 18 reviews</button>
+                <button class="action-btn" onclick="toggleBookmark(this)">◇ Save</button>
+              </div>
+              <span class="read-more" onclick="location.href='review.html?poem=3'">Read full →</span>
+            </div>
+          </div>
+
+          <div class="poem-card" data-tab="all trending for-review">
+            <div class="poem-card-body">
+              <div class="card-author"><div class="avatar a-slate">LT</div><div class="author-info"><div class="name">Leela Thomas</div><div class="when">2 days ago · Kochi</div></div></div>
+              <div class="poem-title">My Mother's Atlas</div>
+              <div class="poem-genre">Narrative poetry · Migration</div>
+              <div class="poem-excerpt">She kept the map in a steel trunk
+alongside the certificates, the photographs,
+the folded letter that was never sent.
+Every crease held a country she had left in portions.</div>
+              <div class="poem-tags"><span class="ptag">family</span><span class="ptag">migration</span><span class="ptag">archive</span><span class="ptag">narrative</span></div>
+            </div>
+            <div class="poem-card-footer">
+              <div class="poem-actions">
+                <button class="action-btn" onclick="toggleLike(this)">♡ 142</button>
+                <button class="action-btn" onclick="location.href='review.html?poem=4'">✍ 41 reviews</button>
+                <button class="action-btn" onclick="toggleBookmark(this)">◇ Save</button>
+              </div>
+              <span class="read-more" onclick="location.href='review.html?poem=4'">Read full →</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="right-col">
+          <div class="prompt-card">
+            <span class="eyebrow">Prompt of the day</span>
+            <p style="font-size:0.78rem;color:var(--muted);margin-top:4px">April 4, 2026</p>
+            <p class="prompt-text">"Write about something that returns — not a person, but a feeling, a season, or a light."</p>
+            <button class="btn-prompt" onclick="location.href='post-content.html'">✦ Write to this prompt</button>
+          </div>
+          <div class="side-panel">
+            <span class="eyebrow">Trending now</span>
+            <h3>This week's top poems</h3>
+            <div class="trending-item"><span class="trend-num">1</span><div class="trend-info"><div class="t-title">When the Marina Wind Returned</div><div class="t-author">Ananya Krish</div></div><span class="trend-reads">1.2k</span></div>
+            <div class="trending-item"><span class="trend-num">2</span><div class="trend-info"><div class="t-title">My Mother's Atlas</div><div class="t-author">Leela Thomas</div></div><span class="trend-reads">894</span></div>
+            <div class="trending-item"><span class="trend-num">3</span><div class="trend-info"><div class="t-title">On Being Searched</div><div class="t-author">Ritvik Varma</div></div><span class="trend-reads">712</span></div>
+            <div class="trending-item"><span class="trend-num">4</span><div class="trend-info"><div class="t-title">First Rain on Red Soil</div><div class="t-author">Dev Kannan</div></div><span class="trend-reads">540</span></div>
+            <div class="trending-item"><span class="trend-num">5</span><div class="trend-info"><div class="t-title">The Grammar of Waiting</div><div class="t-author">Sara Mir</div></div><span class="trend-reads">489</span></div>
+          </div>
+          <div class="side-panel">
+            <span class="eyebrow">Suggested for you</span>
+            <h3>Poets to follow</h3>
+            <div class="suggest-item"><div class="avatar a-indigo" style="width:34px;height:34px;border-radius:9px;font-size:0.74rem">NJ</div><div class="s-info"><div class="s-name">Nila Joseph</div><div class="s-role">Love poetry · Madurai</div></div><button class="btn-follow" onclick="toggleFollow(this)">Follow</button></div>
+            <div class="suggest-item"><div class="avatar a-rose" style="width:34px;height:34px;border-radius:9px;font-size:0.74rem">AK</div><div class="s-info"><div class="s-name">Arjun Kumar</div><div class="s-role">Protest poetry · Delhi</div></div><button class="btn-follow" onclick="toggleFollow(this)">Follow</button></div>
+            <div class="suggest-item"><div class="avatar a-rose" style="width:34px;height:34px;border-radius:9px;font-size:0.74rem">MP</div><div class="s-info"><div class="s-name">Meera Pillai</div><div class="s-role">Classical forms · Kerala</div></div><button class="btn-follow" onclick="toggleFollow(this)">Follow</button></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const getTheme = () => localStorage.getItem('vl_theme') || 'dark';
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('vl_theme', t);
+      const tog = document.getElementById('themeToggle');
+      const lbl = document.getElementById('themeLabel');
+      if (t === 'dark') { tog.classList.add('on'); lbl.textContent = 'Dark mode'; }
+      else { tog.classList.remove('on'); lbl.textContent = 'Light mode'; }
+    }
+    function toggleTheme() { applyTheme(getTheme() === 'dark' ? 'light' : 'dark'); }
+    applyTheme(getTheme());
+
+    const user = (() => { try { return JSON.parse(sessionStorage.getItem('vl_user')); } catch { return null; } })();
+    if (!user) location.href = 'login.html';
+    else {
+      document.getElementById('sidebarAvatar').textContent = user.initials || '?';
+      document.getElementById('sidebarName').textContent = user.name || '—';
+      const hr = new Date().getHours();
+      const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+      document.getElementById('greetUser').textContent = `${greet}, ${user.name.split(' ')[0]} ✦`;
+    }
+    function doLogout() { sessionStorage.removeItem('vl_user'); location.href = 'login.html'; }
+    function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('open'); }
+    document.addEventListener('click', e => { if (!e.target.closest('.sidebar-user')) document.getElementById('userDropdown').classList.remove('open'); });
+
+    function toggleLike(btn) { btn.classList.toggle('liked'); const m = btn.textContent.match(/(\d+)/); if(m){ const n=parseInt(m[1]); btn.textContent = btn.classList.contains('liked')?`♥ ${n+1}`:`♡ ${n}`; } }
+    function toggleBookmark(btn) { btn.classList.toggle('bookmarked'); btn.textContent = btn.classList.contains('bookmarked') ? '◆ Saved' : '◇ Save'; }
+    function toggleFollow(btn) { btn.classList.toggle('following'); btn.textContent = btn.classList.contains('following') ? '✓ Following' : 'Follow'; }
+    function setTab(btn) {
+      document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      const label = btn.textContent.trim().toLowerCase().replace(/ /g, '-');
+      const tabKey = label === 'all-poems' ? 'all' : label;
+      document.querySelectorAll('.poem-card').forEach(card => {
+        const tabs = card.getAttribute('data-tab') || 'all';
+        card.style.display = tabs.includes(tabKey) ? '' : 'none';
+      });
+    }
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800); }
+    document.querySelectorAll('.poem-card').forEach((c, i) => c.style.animationDelay = `${i * 0.08}s`);
+  </script>
+</body>
+</html>

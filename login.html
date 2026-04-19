@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VerseLink — Sign In</title>
+  
+  
+  <style>
+    /* ── THEME TOKENS ─────────────────────────────────────────── */
+    :root {
+      --ink: #12100e; --cream: #f5f0e8;
+      --accent: #4f9cf7; --accent-light: #82bfff;
+      --primary: #1a4fad; --primary-light: #2d6fd4;
+      --error: #e05c5c; --success: #4ade80;
+    }
+    [data-theme="dark"] {
+      --bg: #060a14; --surface: rgba(8,16,36,0.72);
+      --text: #e8f0fe; --text-dim: rgba(232,240,254,0.56);
+      --border: rgba(79,156,247,0.22); --input-bg: rgba(232,228,240,0.06);
+      --input-border: rgba(232,228,240,0.18); --header-bg: rgba(6,12,28,0.85);
+    }
+    [data-theme="light"] {
+      --bg: #eaf1fd; --surface: rgba(240,247,255,0.93);
+      --text: #0a1628; --text-dim: rgba(10,22,40,0.6);
+      --border: rgba(79,156,247,0.4); --input-bg: rgba(18,16,14,0.04);
+      --input-border: rgba(18,16,14,0.2); --header-bg: rgba(235,244,255,0.92);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Times New Roman', Times, serif; overflow-x: hidden; transition: background 0.4s; }
+    body { background: var(--bg); color: var(--text); }
+    a { text-decoration: none; color: inherit; }
+
+    /* ANIMATED BACKGROUND */
+    .anim-bg { position: fixed; inset: 0; z-index: 0; background: #060a14; overflow: hidden; }
+    [data-theme="light"] .anim-bg { background: #eaf1fd; }
+    #inkCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    .grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+
+    /* THEME TOGGLE */
+    .theme-toggle {
+      position: fixed; top: 20px; right: 20px; z-index: 100;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(12px); cursor: pointer;
+      display: grid; place-items: center; font-size: 1.2rem;
+      transition: all 0.3s; color: var(--text);
+    }
+    .theme-toggle:hover { transform: rotate(20deg) scale(1.08); border-color: var(--accent); }
+
+    .page {
+      position: relative; z-index: 2; min-height: 100vh;
+      display: grid; grid-template-columns: 1fr 1fr;
+    }
+
+    /* LEFT BRAND */
+    .brand { display: flex; flex-direction: column; justify-content: space-between; padding: 52px 56px; position: relative; }
+    .logo { display: flex; align-items: center; gap: 14px; color: var(--text); }
+    .logo-mark { width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--accent); display: grid; place-items: center; }
+    .logo-mark svg { width: 22px; height: 22px; stroke: var(--accent); }
+    .logo-name { font-family: 'Times New Roman', Times, serif; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.04em; }
+    .brand-center { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
+    .eyebrow { font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; }
+    .brand h1 {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: clamp(3.2rem, 5.5vw, 5.8rem); line-height: 0.9;
+      color: var(--text); font-weight: 300; font-style: italic; margin-bottom: 28px;
+    }
+    .brand h1 em { color: var(--accent-light); font-style: normal; }
+    .brand-desc { color: var(--text-dim); font-size: 1.02rem; line-height: 1.75; max-width: 38ch; margin-bottom: 36px; }
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+    .chip {
+      padding: 8px 16px; border: 1px solid rgba(79,156,247,0.35);
+      border-radius: 999px; font-size: 0.82rem; color: var(--text-dim);
+      backdrop-filter: blur(8px); background: rgba(79,156,247,0.08); transition: all 0.3s;
+    }
+    .chip:hover { background: rgba(79,156,247,0.18); color: var(--text); }
+    .brand-footer { color: var(--text-dim); font-size: 0.82rem; opacity: 0.5; }
+    .brand::after {
+      content: ''; position: absolute; top: 10%; right: 0; bottom: 10%; width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(79,156,247,0.3), transparent);
+    }
+
+    /* RIGHT PANEL */
+    .panel-side { display: flex; align-items: center; justify-content: center; padding: 40px 56px 40px 52px; }
+    .panel {
+      width: min(440px, 100%);
+      background: var(--surface); backdrop-filter: blur(24px);
+      border: 1px solid var(--border); border-radius: 28px; padding: 44px 40px;
+      animation: slideUp 0.7s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .panel-head { margin-bottom: 32px; }
+    .panel-head h2 { font-family: 'Times New Roman', Times, serif; font-size: 2.4rem; color: var(--text); font-weight: 400; margin-bottom: 6px; }
+    .panel-head p { color: var(--text-dim); font-size: 0.94rem; line-height: 1.6; }
+
+    /* Tabs */
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+    .auth-tab {
+      flex: 1; padding: 12px; text-align: center; cursor: pointer;
+      color: var(--text-dim); font-size: 0.9rem; font-weight: 500;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: all 0.3s; background: none; border-left: none; border-right: none; border-top: none;
+    }
+    .auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .auth-tab:hover { color: var(--text); }
+
+    .field { margin-bottom: 20px; }
+    .field label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 8px; letter-spacing: 0.04em; }
+    .field-wrap { position: relative; }
+    .field input {
+      width: 100%; padding: 14px 16px;
+      background: var(--input-bg); border: 1.5px solid var(--input-border);
+      border-radius: 14px; color: var(--text); font-family: 'Times New Roman', Times, serif;
+      font-size: 0.95rem; transition: all 0.3s; outline: none;
+    }
+    .field input::placeholder { color: var(--text-dim); opacity: 0.6; }
+    .field input:focus { border-color: var(--accent); background: rgba(79,156,247,0.06); }
+    .field input.error { border-color: var(--error); background: rgba(224,92,92,0.06); }
+    .field input.valid { border-color: var(--success); }
+    .field-error { font-size: 0.78rem; color: var(--error); margin-top: 5px; display: none; }
+    .field-error.show { display: block; }
+    .field-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .field-row label { margin: 0; }
+    .forgot { font-size: 0.82rem; color: var(--accent); }
+    .forgot:hover { color: var(--accent-light); }
+
+    .remember { display: flex; align-items: center; gap: 10px; margin: 16px 0 24px; }
+    .remember input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+    .remember label { font-size: 0.88rem; color: var(--text-dim); cursor: pointer; }
+
+    .btn-signin {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border: none; border-radius: 14px; color: #fff;
+      font-family: 'Times New Roman', Times, serif; font-size: 1rem; font-weight: 500;
+      cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;
+    }
+    .btn-signin::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .btn-signin:hover::before { opacity: 1; }
+    .btn-signin span { position: relative; z-index: 1; }
+    .btn-signin:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Shake animation for errors */
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+    .shake { animation: shake 0.4s ease; }
+
+    .divider { display: flex; align-items: center; gap: 14px; margin: 22px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .divider span { color: var(--text-dim); font-size: 0.82rem; }
+
+    .socials { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-social {
+      padding: 13px; border: 1px solid var(--input-border);
+      border-radius: 14px; background: var(--input-bg);
+      color: var(--text); font-family: 'Times New Roman', Times, serif; font-size: 0.9rem;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .btn-social:hover { background: rgba(79,156,247,0.1); border-color: var(--accent); }
+
+    .panel-footer { margin-top: 24px; text-align: center; color: var(--text-dim); font-size: 0.88rem; }
+    .panel-footer a { color: var(--accent); }
+    .panel-footer a:hover { color: var(--accent-light); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: rgba(18,16,14,0.95); border: 1px solid var(--accent);
+      color: var(--cream); padding: 13px 22px; border-radius: 14px;
+      font-size: 0.9rem; z-index: 999; transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+      backdrop-filter: blur(12px);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 900px) {
+      .page { grid-template-columns: 1fr; }
+      .brand { display: none; }
+      .panel-side { padding: 24px; min-height: 100vh; }
+      .panel { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="anim-bg" id="animBg">
+    <canvas id="inkCanvas"></canvas>
+  </div>
+  <div class="grain"></div>
+
+  <!-- THEME TOGGLE -->
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle dark/light mode" id="themeBtn">🌙</button>
+
+  <div class="page">
+    <!-- LEFT BRAND -->
+    <section class="brand">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 18c6-1 9-6 9-12 2 5 3 8 5 10-2 2-5 3-9 3H5Z"/>
+            <path d="M8 14c1.5-1.2 2.6-2.8 3.3-4.8"/>
+          </svg>
+        </div>
+        <span class="logo-name">VerseLink</span>
+      </div>
+      <div class="brand-center">
+        <p class="eyebrow">Poets · Readers · Critics</p>
+        <h1>Find your<br><em>poetic</em><br>circle.</h1>
+        <p class="brand-desc">A professional network for poets to publish work, discover voices, exchange reviews, and grow through meaningful creative connections.</p>
+        <div class="chips">
+          <span class="chip">Discover poets</span>
+          <span class="chip">Share poems</span>
+          <span class="chip">Review thoughtfully</span>
+          <span class="chip">Grow your craft</span>
+        </div>
+      </div>
+      <p class="brand-footer">VerseLink Studios · 2025</p>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <section class="panel-side">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 id="panelTitle">Welcome back</h2>
+          <p id="panelSub">Sign in to explore poets, publish drafts, and connect with your literary network.</p>
+        </div>
+
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchTab(this,'login')" id="tabLogin">Sign in</button>
+          <button class="auth-tab" onclick="switchTab(this,'signup')" id="tabSignup">Create account</button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div id="login-form">
+          <div class="field">
+            <label for="li-email">Email address</label>
+            <div class="field-wrap">
+              <input type="email" id="li-email" placeholder="you@verselink.app" autocomplete="email" oninput="clearErr(this)"/>
+            </div>
+            <div class="field-error" id="li-email-err">Please enter a valid email address.</div>
+          </div>
+          <div class="field">
+            <div class="field-row">
+              <label for="li-pass">Password</label>
+              <a href="#" class="forgot" onclick="showToast('Password reset link sent! Check your inbox.')">Forgot password?</a>
+            </div>
+            <div class="field-wrap">
+              <input type="password" id="li-pass" placeholder="Enter your password" autocomplete="current-password" oninput="clearErr(this)"/>
+            </div>
+            <div class="field-error" id="li-pass-err">Password must be at least 6 characters.</div>
+          </div>
+          <div class="remember">
+            <input type="checkbox" id="keep"/>
+            <label for="keep">Keep me signed in</label>
+          </div>
+          <button class="btn-signin" onclick="doLogin()"><span>Sign in to VerseLink</span></button>
+        </div>
+
+        <!-- SIGNUP FORM -->
+        <div id="signup-form" style="display:none">
+          <div class="field">
+            <label for="su-name">Full name</label>
+            <input type="text" id="su-name" placeholder="Your name" autocomplete="name" oninput="clearErr(this)"/>
+            <div class="field-error" id="su-name-err">Name must be at least 2 characters.</div>
+          </div>
+          <div class="field">
+            <label for="su-email">Email address</label>
+            <input type="email" id="su-email" placeholder="you@verselink.app" autocomplete="email" oninput="clearErr(this)"/>
+            <div class="field-error" id="su-email-err">Please enter a valid email address.</div>
+          </div>
+          <div class="field">
+            <label for="su-pass">Password</label>
+            <input type="password" id="su-pass" placeholder="Create a password (min 6 chars)" autocomplete="new-password" oninput="clearErr(this)"/>
+            <div class="field-error" id="su-pass-err">Password must be at least 6 characters.</div>
+          </div>
+          <button class="btn-signin" onclick="doSignup()" style="margin-top:8px"><span>Create my account</span></button>
+        </div>
+
+        <div class="divider"><span>or continue with</span></div>
+        <div class="socials">
+          <button class="btn-social" onclick="socialLogin('Google')">🔵 Google</button>
+          <button class="btn-social" onclick="socialLogin('Apple')">🍎 Apple</button>
+        </div>
+        <p class="panel-footer">By signing in, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── Theme ──────────────────────────────────────────────────
+    const getTheme = () => localStorage.getItem('vl_theme') || 'dark';
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('themeBtn').textContent = t === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('vl_theme', t);
+    }
+    function toggleTheme() { applyTheme(getTheme() === 'dark' ? 'light' : 'dark'); }
+    applyTheme(getTheme());
+
+    // ── Auth state ─────────────────────────────────────────────
+    // If already logged in, go straight to explore
+    if (sessionStorage.getItem('vl_user')) location.href = 'explore.html';
+
+    // ── Tab switch ─────────────────────────────────────────────
+    function switchTab(el, tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      const isLogin = tab === 'login';
+      document.getElementById('login-form').style.display = isLogin ? 'block' : 'none';
+      document.getElementById('signup-form').style.display = isLogin ? 'none' : 'block';
+      document.getElementById('panelTitle').textContent = isLogin ? 'Welcome back' : 'Join VerseLink';
+      document.getElementById('panelSub').textContent = isLogin
+        ? 'Sign in to explore poets, publish drafts, and connect with your literary network.'
+        : 'Create your account and find your poetic circle today.';
+    }
+
+    // ── Validation helpers ─────────────────────────────────────
+    function showErr(inputId, errId, msg) {
+      const inp = document.getElementById(inputId);
+      const err = document.getElementById(errId);
+      inp.classList.add('error'); err.textContent = msg; err.classList.add('show');
+      inp.closest('.panel') && inp.closest('.panel').classList.add('shake');
+      setTimeout(() => inp.closest('.panel') && inp.closest('.panel').classList.remove('shake'), 400);
+      return false;
+    }
+    function clearErr(inp) {
+      inp.classList.remove('error', 'valid');
+      const errEl = document.getElementById(inp.id + '-err');
+      if (errEl) errEl.classList.remove('show');
+    }
+    const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+    // ── Login ──────────────────────────────────────────────────
+    function doLogin() {
+      const email = document.getElementById('li-email').value.trim();
+      const pass  = document.getElementById('li-pass').value;
+      let ok = true;
+      if (!validEmail(email)) { showErr('li-email','li-email-err','Please enter a valid email address.'); ok = false; }
+      if (pass.length < 6)    { showErr('li-pass','li-pass-err','Password must be at least 6 characters.'); ok = false; }
+      if (!ok) return;
+      // Mark as valid
+      document.getElementById('li-email').classList.add('valid');
+      document.getElementById('li-pass').classList.add('valid');
+      // Store auth state
+      const name = email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      sessionStorage.setItem('vl_user', JSON.stringify({ name, email, initials: name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() }));
+      showToast('Signed in! Redirecting…');
+      setTimeout(() => location.href = 'explore.html', 1200);
+    }
+
+    // ── Signup ─────────────────────────────────────────────────
+    function doSignup() {
+      const name  = document.getElementById('su-name').value.trim();
+      const email = document.getElementById('su-email').value.trim();
+      const pass  = document.getElementById('su-pass').value;
+      let ok = true;
+      if (name.length < 2)    { showErr('su-name','su-name-err','Name must be at least 2 characters.'); ok = false; }
+      if (!validEmail(email)) { showErr('su-email','su-email-err','Please enter a valid email address.'); ok = false; }
+      if (pass.length < 6)    { showErr('su-pass','su-pass-err','Password must be at least 6 characters.'); ok = false; }
+      if (!ok) return;
+      const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      sessionStorage.setItem('vl_user', JSON.stringify({ name, email, initials }));
+      showToast('Account created! Welcome to VerseLink 🎉');
+      setTimeout(() => location.href = 'explore.html', 1400);
+    }
+
+    // ── Social login (demo) ────────────────────────────────────
+    function socialLogin(provider) {
+      sessionStorage.setItem('vl_user', JSON.stringify({ name: `${provider} User`, email: `user@${provider.toLowerCase()}.com`, initials: provider[0] }));
+      showToast(`Continuing with ${provider}…`);
+      setTimeout(() => location.href = 'explore.html', 1200);
+    }
+
+    // ── Toast ──────────────────────────────────────────────────
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (document.getElementById('login-form').style.display !== 'none') doLogin();
+        else doSignup();
+      }
+    });
+  </script>
+
+  <script>
+  // ── Ink-drop / floating letter animation ──────────────────
+  (function() {
+    const canvas = document.getElementById('inkCanvas');
+    const ctx = canvas.getContext('2d');
+    const isDark = () => document.documentElement.getAttribute('data-theme') !== 'light';
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const GLYPHS = ['∴','∵','⌇','⁕','❋','✦','✧','⋯','⊹','⌘','ℵ','∞','℘','⌦','⊕',
+                    'A','a','е','ε','ω','λ','σ','ρ','ι','α','β','ν','δ','θ','φ',
+                    'अ','आ','ई','ओ','க','ல','ம','ப','த',
+                    '詩','文','字','語','書','句','詞','韻'];
+
+    class Particle {
+      constructor() { this.reset(true); }
+      reset(init) {
+        this.x  = Math.random() * canvas.width;
+        this.y  = init ? Math.random() * canvas.height : canvas.height + 20;
+        this.vy = -(0.18 + Math.random() * 0.38);
+        this.vx = (Math.random() - 0.5) * 0.18;
+        this.glyph  = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        this.size   = 11 + Math.random() * 18;
+        this.life   = 0;
+        this.maxLife = 180 + Math.random() * 260;
+        this.rot    = (Math.random() - 0.5) * 0.018;
+        this.angle  = (Math.random() - 0.5) * 0.5;
+        this.hue    = isDark() ? (200 + Math.random() * 40) : (205 + Math.random() * 30);
+        this.sat    = isDark() ? (40 + Math.random() * 30) : (30 + Math.random() * 25);
+        this.lum    = isDark() ? (55 + Math.random() * 30) : (35 + Math.random() * 20);
+      }
+      tick() {
+        this.life++;
+        this.x    += this.vx;
+        this.y    += this.vy;
+        this.angle += this.rot;
+        if (this.life > this.maxLife || this.y < -30) this.reset(false);
+      }
+      draw() {
+        const t = this.life / this.maxLife;
+        const alpha = t < 0.15 ? t/0.15 : t > 0.75 ? (1-t)/0.25 : 1;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.globalAlpha = alpha * (isDark() ? 0.55 : 0.38);
+        ctx.fillStyle = `hsl(${this.hue},${this.sat}%,${this.lum}%)`;
+        ctx.font = `${this.size}px 'Times New Roman', serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.glyph, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    // Ink blobs (radial gradient pulses)
+    class Blob {
+      constructor() { this.reset(true); }
+      reset(init) {
+        this.x  = Math.random() * canvas.width;
+        this.y  = Math.random() * canvas.height;
+        this.r  = 80 + Math.random() * 180;
+        this.life = init ? Math.random() * 300 : 0;
+        this.maxLife = 300 + Math.random() * 400;
+        this.hue = isDark() ? (205 + Math.random() * 40) : (205 + Math.random() * 30);
+      }
+      tick() {
+        this.life++;
+        if (this.life > this.maxLife) this.reset(false);
+      }
+      draw() {
+        const t = this.life / this.maxLife;
+        const alpha = (t < 0.3 ? t/0.3 : t > 0.7 ? (1-t)/0.3 : 1) * (isDark() ? 0.07 : 0.04);
+        const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+        g.addColorStop(0, `hsla(${this.hue},60%,${isDark()?45:40}%,${alpha})`);
+        g.addColorStop(1, `hsla(${this.hue},60%,${isDark()?45:40}%,0)`);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+    }
+
+    const particles = Array.from({length: 70}, () => new Particle());
+    const blobs     = Array.from({length: 6},  () => new Blob());
+
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      blobs.forEach(b => { b.tick(); b.draw(); });
+      particles.forEach(p => { p.tick(); p.draw(); });
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // Re-seed hue when theme changes
+    const obs = new MutationObserver(() => {
+      particles.forEach(p => { p.hue = isDark() ? (270 + Math.random()*60) : (260 + Math.random()*50); });
+      blobs.forEach(b => { b.hue = isDark() ? (260 + Math.random()*80) : (250 + Math.random()*60); });
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  })();
+  </script>
+</body>
+</html>
